@@ -114,36 +114,60 @@ body {
 
 .ranking-list {
     display: flex;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 5px;
-    padding: 5px 0;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px 5px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    margin: 10px 0;
 }
 
 .ranking-item {
-    /* 기본적으로 한 줄에 4개 배치 (가족 4명) */
-    flex: 0 0 calc(25% - 5px);
-    max-width: calc(25% - 5px);
+    /* 한 줄에 4명 모두 배치 */
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
 }
 
-/* 모바일 세로 화면에서 랭킹 최적화 */
+/* 모바일에서도 한 줄 유지하되 크기 조정 */
 @media (max-width: 480px) {
     .ranking-list {
-        gap: 2px;
+        gap: 8px;
+        padding: 12px 3px;
     }
     
-    .ranking-item {
-        /* 작은 화면에서는 2개씩 배치 */
-        flex: 0 0 calc(50% - 2px);
-        max-width: calc(50% - 2px);
+    .ranking-item img {
+        width: 50px !important;
+        height: 50px !important;
+    }
+    
+    .rank-badge {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .grade-badge {
+        font-size: 0.5rem !important;
+        padding: 1px 4px !important;
     }
 }
 
-/* 아주 작은 화면에서는 세로 배치 */
-@media (max-width: 320px) {
-    .ranking-item {
-        flex: 0 0 100%;
-        max-width: 100%;
+/* 아주 작은 화면에서 더 작게 */
+@media (max-width: 360px) {
+    .ranking-list {
+        gap: 5px;
+        padding: 10px 2px;
+    }
+    
+    .ranking-item img {
+        width: 45px !important;
+        height: 45px !important;
+    }
+    
+    .ranking-item .rank-info div {
+        font-size: 0.75rem !important;
     }
 }
 
