@@ -114,25 +114,47 @@ body {
 
 .ranking-list {
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-start;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 5px;
+    padding: 5px 0;
 }
 
 .ranking-item {
-    text-align: center;
-    padding: 8px;
-    background: rgba(255,255,255,0.5);
-    border-radius: 8px;
-    min-width: 70px;
+    /* 기본적으로 한 줄에 4개 배치 (가족 4명) */
+    flex: 0 0 calc(25% - 5px);
+    max-width: calc(25% - 5px);
+}
+
+/* 모바일 세로 화면에서 랭킹 최적화 */
+@media (max-width: 480px) {
+    .ranking-list {
+        gap: 2px;
+    }
+    
+    .ranking-item {
+        /* 작은 화면에서는 2개씩 배치 */
+        flex: 0 0 calc(50% - 2px);
+        max-width: calc(50% - 2px);
+    }
+}
+
+/* 아주 작은 화면에서는 세로 배치 */
+@media (max-width: 320px) {
+    .ranking-item {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
 }
 
 /* 프로필 그리드 */
 .profile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 15px;
     margin-bottom: 20px;
+    max-width: 600px;
+    margin: 0 auto 20px auto;
 }
 
 .profile-card {
@@ -622,8 +644,8 @@ body {
     }
     
     .profile-grid {
-        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
+        max-width: 500px;
     }
     
     .profile-card {
@@ -640,9 +662,10 @@ body {
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 400px) {
     .profile-grid {
         grid-template-columns: 1fr;
+        max-width: 300px;
     }
     
     .bottom-actions {
