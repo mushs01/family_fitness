@@ -251,19 +251,34 @@ function setDefaultProfile(profileName) {
 
 // 탭 전환
 async function switchTab(tabName) {
+    console.log('switchTab 호출됨:', tabName);
+    
     // 탭 버튼 활성화
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        console.log('탭 버튼 활성화됨:', tabName);
+    } else {
+        console.error('탭 버튼을 찾을 수 없음:', tabName);
+    }
     
     // 탭 내용 표시
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    document.getElementById(`${tabName}-tab`).classList.add('active');
+    const activeTab = document.getElementById(`${tabName}-tab`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+        console.log('탭 내용 활성화됨:', `${tabName}-tab`);
+    } else {
+        console.error('탭 내용을 찾을 수 없음:', `${tabName}-tab`);
+    }
     
     if (tabName === 'calendar') {
+        console.log('캘린더 탭으로 전환, updateCalendar 호출');
         await updateCalendar();
     } else {
         // 다른 탭으로 전환할 때 선택된 계획 초기화 (계획에서 직접 호출된 경우 제외)
@@ -517,19 +532,33 @@ async function showPlanCalendar(plan) {
 
 // 캘린더 업데이트
 async function updateCalendar() {
+    console.log('updateCalendar 호출됨');
+    
     const calendarTitle = document.getElementById('calendar-title');
     const calendarGrid = document.getElementById('calendar-grid');
+    
+    console.log('캘린더 DOM 요소:', { calendarTitle, calendarGrid });
+    
+    if (!calendarTitle || !calendarGrid) {
+        console.error('캘린더 DOM 요소를 찾을 수 없습니다!');
+        return;
+    }
     
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
+    console.log('캘린더 날짜:', { year, month });
+    
     calendarTitle.textContent = `${year}년 ${month + 1}월`;
     
     // 캘린더 그리드 생성
-    calendarGrid.innerHTML = await createCalendarGrid(year, month);
+    const gridHtml = await createCalendarGrid(year, month);
+    console.log('생성된 캘린더 HTML 길이:', gridHtml.length);
+    calendarGrid.innerHTML = gridHtml;
     
     // 캘린더 일자 클릭 이벤트 리스너 추가
     const calendarDays = calendarGrid.querySelectorAll('.calendar-day:not(.empty)');
+    console.log('캘린더 날짜 개수:', calendarDays.length);
     calendarDays.forEach(day => {
         day.addEventListener('click', async function() {
             const dateStr = this.dataset.date;
@@ -552,8 +581,12 @@ async function navigateMonth(direction) {
 
 // 캘린더 그리드 생성
 async function createCalendarGrid(year, month) {
+    console.log('createCalendarGrid 호출됨:', { year, month });
+    
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    console.log('캘린더 정보:', { firstDay, daysInMonth });
     
     let html = `
         <style>
@@ -724,24 +757,27 @@ async function updateRanking() {
         else if (index === 2) bgColor = '#f8d7da'; // 3위 - 브론즈
         
         rankingItem.innerHTML = `
-            <div class="rank-content-compact" style="display: flex; align-items: center; padding: 6px 8px; background: ${bgColor}; border-radius: 12px; margin: 0; width: 100%; box-sizing: border-box;">
-                <div class="rank-number" style="font-size: 0.8rem; font-weight: bold; margin-right: 4px; color: #333; min-width: 20px;">
-                    ${rankNumber}
-                </div>
-                <div class="rank-profile-img" style="margin-right: 6px;">
+            <div class="rank-profile-container" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+                <div class="rank-image-wrapper" style="position: relative; margin-bottom: 8px;">
                     <img src="${imgSrc}" alt="${item.name}" 
-                         style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid #007bff;"
+                         style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid ${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#4CAF50'}; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                    <div style="display: none; width: 20px; height: 20px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 0.7rem;">
+                    <div style="display: none; width: 60px; height: 60px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 1.5rem; border: 3px solid ${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#4CAF50'};">
                         ${item.name === '아빠' ? '👨' : item.name === '엄마' ? '👩' : item.name === '주환' ? '👦' : '🧒'}
                     </div>
+                    <div class="rank-badge" style="position: absolute; top: -5px; left: -5px; width: 25px; height: 25px; background: ${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#4CAF50'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: white; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        ${rankNumber}
+                    </div>
+                    <div class="grade-badge" style="position: absolute; top: -8px; right: -8px; background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; font-weight: bold; border: 1px solid white;">
+                        ${item.grade.split(' ')[0]}
+                    </div>
                 </div>
-                <div class="rank-info-compact" style="flex: 1; min-width: 0;">
-                    <div style="font-weight: bold; font-size: 0.75rem; color: #333; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div class="rank-info" style="text-align: center;">
+                    <div style="font-weight: bold; font-size: 0.9rem; color: #333; margin-bottom: 2px;">
                         ${item.name}
                     </div>
-                    <div style="font-size: 0.65rem; color: #007bff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${item.grade.split(' ')[0]} ${item.score}점
+                    <div style="font-size: 0.8rem; color: #666;">
+                        ${item.score}점
                     </div>
                 </div>
             </div>
@@ -821,30 +857,7 @@ function calculateDaysBetween(startDate, endDate) {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-// 특정 날짜에 운동 완료 여부 확인
-function isDateCompleted(dateStr) {
-    const data = loadData();
-    const profileData = data.profiles[currentProfile];
-    if (!profileData) return false;
-    
-    return profileData.plans.some(plan => 
-        plan.completedDates && plan.completedDates.includes(dateStr)
-    );
-}
 
-// 특정 날짜에 운동 계획 여부 확인
-function hasExerciseOnDate(dateStr) {
-    const data = loadData();
-    const profileData = data.profiles[currentProfile];
-    if (!profileData) return false;
-    
-    return profileData.plans.some(plan => {
-        const startDate = new Date(plan.startDate);
-        const endDate = new Date(plan.endDate);
-        const checkDate = new Date(dateStr);
-        return checkDate >= startDate && checkDate <= endDate;
-    });
-}
 
 // Firebase에서 데이터 로드
 async function loadDataFromFirebase() {
