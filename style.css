@@ -30,7 +30,7 @@ body {
 }
 
 /* 로딩 화면 */
-#loading-screen {
+#loading-screen.active {
     display: flex;
     justify-content: center;
     align-items: center;
