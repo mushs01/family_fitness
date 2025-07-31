@@ -12,6 +12,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="우리가족 운동관리">
+    
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <!-- 로딩 화면 -->
@@ -97,7 +103,10 @@
     <!-- 운동 관리 화면 -->
     <div id="exercise-screen" class="screen">
         <div class="header">
-            <button class="back-btn">← 뒤로</button>
+                            <button class="back-btn">
+                    <span class="back-icon">🏡</span>
+                    <span class="back-text">홈으로</span>
+                </button>
             <div class="profile-info">
                 <img id="current-profile-img" src="" alt="" class="current-profile-image">
                 <div class="profile-details">
