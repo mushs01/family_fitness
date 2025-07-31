@@ -143,13 +143,6 @@ function setupEventListeners() {
         });
     });
     
-    // 캘린더 네비게이션 버튼
-    document.querySelectorAll('.calendar-nav').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            await navigateMonth(this.dataset.nav);
-        });
-    });
-    
     // 새 계획 추가 버튼
     document.querySelector('.add-plan-btn').addEventListener('click', function() {
         showAddPlanPopup();
@@ -166,11 +159,11 @@ function setupEventListeners() {
         savePlan();
     });
     
-    // 캘린더 네비게이션
+    // 캘린더 네비게이션 (단일 이벤트 리스너)
     document.querySelectorAll('.calendar-nav').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const direction = this.dataset.nav;
-            navigateCalendar(direction);
+            await navigateMonth(direction);
         });
     });
     
@@ -207,6 +200,10 @@ async function selectProfile(profileName) {
     
     // 계획 목록 업데이트
     await updatePlansList();
+    
+    // 캘린더 초기화 (첫 방문 시에도 제대로 표시되도록)
+    currentDate = new Date();
+    await updateCalendar();
 }
 
 // 현재 프로필 정보 업데이트
@@ -688,15 +685,7 @@ async function toggleDateCompletion(dateStr) {
     await updateRanking();
 }
 
-// 캘린더 네비게이션
-function navigateCalendar(direction) {
-    if (direction === 'prev') {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-    } else {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-    updateCalendar();
-}
+
 
 // 랭킹 업데이트
 async function updateRanking() {
@@ -735,29 +724,24 @@ async function updateRanking() {
         else if (index === 2) bgColor = '#f8d7da'; // 3위 - 브론즈
         
         rankingItem.innerHTML = `
-            <div class="rank-content" style="display: flex; align-items: center; padding: 12px; background: ${bgColor}; border-radius: 10px; margin-bottom: 8px;">
-                <div class="rank-number" style="font-size: 1.2rem; font-weight: bold; margin-right: 15px; min-width: 30px;">
-                    ${rankNumber}위
+            <div class="rank-content-compact" style="display: flex; align-items: center; padding: 6px 8px; background: ${bgColor}; border-radius: 12px; margin: 0; width: 100%; box-sizing: border-box;">
+                <div class="rank-number" style="font-size: 0.8rem; font-weight: bold; margin-right: 4px; color: #333; min-width: 20px;">
+                    ${rankNumber}
                 </div>
-                <div class="rank-profile-img" style="margin-right: 15px;">
+                <div class="rank-profile-img" style="margin-right: 6px;">
                     <img src="${imgSrc}" alt="${item.name}" 
-                         style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff;"
+                         style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid #007bff;"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                    <div style="display: none; width: 40px; height: 40px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 1.2rem;">
+                    <div style="display: none; width: 20px; height: 20px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 0.7rem;">
                         ${item.name === '아빠' ? '👨' : item.name === '엄마' ? '👩' : item.name === '주환' ? '👦' : '🧒'}
                     </div>
                 </div>
-                <div class="rank-info" style="flex: 1;">
-                    <div class="rank-name" style="font-weight: bold; font-size: 1rem; margin-bottom: 2px;">
+                <div class="rank-info-compact" style="flex: 1; min-width: 0;">
+                    <div style="font-weight: bold; font-size: 0.75rem; color: #333; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                         ${item.name}
                     </div>
-                    <div class="rank-details" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
-                        <span class="rank-grade" style="background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">
-                            ${item.grade}
-                        </span>
-                        <span class="rank-score" style="color: #6c757d; font-weight: 500;">
-                            ${item.score}점
-                        </span>
+                    <div style="font-size: 0.65rem; color: #007bff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${item.grade.split(' ')[0]} ${item.score}점
                     </div>
                 </div>
             </div>
