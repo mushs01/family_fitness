@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리가족 운동관리</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <!-- PWA 설정 -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="우리가족 운동관리">
+</head>
+<body>
+    <!-- 로딩 화면 -->
+    <div id="loading-screen" class="screen active">
+        <div class="loading-container">
+            <img src="family_image.png" alt="가족 사진" class="loading-icon">
+            <h1 class="loading-title">우리가족 운동관리</h1>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">로딩 중...</p>
+        </div>
+    </div>
+
+    <!-- 프로필 선택 화면 -->
+    <div id="profile-screen" class="screen">
+        <div class="header">
+            <h1>가족 프로필 선택</h1>
+            <div class="family-ranking">
+                <h3>🏆 이번 주 가족 랭킹</h3>
+                <div id="ranking-list" class="ranking-list"></div>
+            </div>
+        </div>
+
+        <div class="profile-grid">
+            <div class="profile-card" data-profile="아빠">
+                <div class="profile-image-container">
+                    <img src="dad.png" alt="아빠" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="profile-emoji" style="display:none">👨</div>
+                </div>
+                <h3>아빠</h3>
+                <div class="profile-stats">
+                    <span class="grade">🥉 브론즈</span>
+                    <span class="score">0점</span>
+                </div>
+                <button class="set-default-btn">⭐ 기본설정</button>
+            </div>
+
+            <div class="profile-card" data-profile="엄마">
+                <div class="profile-image-container">
+                    <img src="mom.png" alt="엄마" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="profile-emoji" style="display:none">👩</div>
+                </div>
+                <h3>엄마</h3>
+                <div class="profile-stats">
+                    <span class="grade">🥉 브론즈</span>
+                    <span class="score">0점</span>
+                </div>
+                <button class="set-default-btn">⭐ 기본설정</button>
+            </div>
+
+            <div class="profile-card" data-profile="주환">
+                <div class="profile-image-container">
+                    <img src="juhwan.png" alt="주환" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="profile-emoji" style="display:none">👦</div>
+                </div>
+                <h3>주환</h3>
+                <div class="profile-stats">
+                    <span class="grade">🥉 브론즈</span>
+                    <span class="score">0점</span>
+                </div>
+                <button class="set-default-btn">⭐ 기본설정</button>
+            </div>
+
+            <div class="profile-card" data-profile="태환">
+                <div class="profile-image-container">
+                    <img src="taehwan.png" alt="태환" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="profile-emoji" style="display:none">🧒</div>
+                </div>
+                <h3>태환</h3>
+                <div class="profile-stats">
+                    <span class="grade">🥉 브론즈</span>
+                    <span class="score">0점</span>
+                </div>
+                <button class="set-default-btn">⭐ 기본설정</button>
+            </div>
+        </div>
+
+        <div class="bottom-actions">
+            <button class="info-btn">ℹ️ 앱 정보</button>
+            <button class="exit-btn">❌ 앱 종료</button>
+        </div>
+    </div>
+
+    <!-- 운동 관리 화면 -->
+    <div id="exercise-screen" class="screen">
+        <div class="header">
+            <button class="back-btn">← 뒤로</button>
+            <div class="profile-info">
+                <img id="current-profile-img" src="" alt="" class="current-profile-image">
+                <div class="profile-details">
+                    <span id="current-profile-name" class="current-name"></span>
+                    <span id="current-profile-grade" class="current-grade"></span>
+                </div>
+            </div>
+            <button class="menu-btn">☰</button>
+        </div>
+
+        <div class="content">
+            <div class="tab-container">
+                <button class="tab-btn active" data-tab="plans">📅 운동 계획</button>
+                <button class="tab-btn" data-tab="calendar">📊 캘린더</button>
+            </div>
+
+            <div id="plans-tab" class="tab-content active">
+                <div class="plans-header">
+                    <h3>운동 계획 관리</h3>
+                    <button class="add-plan-btn">+ 새 계획 추가</button>
+                </div>
+                <div id="plans-list" class="plans-list">
+                    <!-- 운동 계획들이 여기 표시됩니다 -->
+                </div>
+            </div>
+
+            <div id="calendar-tab" class="tab-content">
+                <div class="calendar-header">
+                    <button class="calendar-nav" data-nav="prev">◀</button>
+                    <h3 id="calendar-title">2025년 1월</h3>
+                    <button class="calendar-nav" data-nav="next">▶</button>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- 캘린더가 여기 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 운동 계획 추가 팝업 -->
+    <div id="add-plan-popup" class="popup">
+        <div class="popup-content">
+            <h3>새 운동 계획 추가</h3>
+            <form id="plan-form">
+                <div class="form-group">
+                    <label>운동 종류</label>
+                    <select id="exercise-type">
+                        <option value="달리기">달리기</option>
+                        <option value="러닝머신">러닝머신</option>
+                        <option value="걷기">걷기</option>
+                        <option value="자전거">자전거</option>
+                        <option value="수영">수영</option>
+                        <option value="기구운동">기구운동</option>
+                        <option value="요가">요가</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>운동 내용</label>
+                    <input type="text" id="exercise-content" placeholder="예: 30분간 러닝머신">
+                </div>
+                <div class="form-group">
+                    <label>시작 날짜</label>
+                    <input type="date" id="start-date">
+                </div>
+                <div class="form-group">
+                    <label>종료 날짜</label>
+                    <input type="date" id="end-date">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn">취소</button>
+                    <button type="submit" class="save-btn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
