@@ -818,8 +818,10 @@ async function updatePlansList() {
         plansCount.textContent = `${activePlans.length}개 계획`;
     }
     
-    // 현재 및 미래 계획들만 표시
-    activePlans.forEach(plan => {
+    // 현재 및 미래 계획들만 표시, 정렬 포함
+    activePlans
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date)) // ⬅️ 정렬
+    .forEach(plan => {
         const planElement = createPlanElement(plan);
         plansList.appendChild(planElement);
     });
