@@ -1,5 +1,5 @@
 // Service Worker for 우리가족 운동관리 PWA
-const CACHE_NAME = 'family-fitness-v2-' + Date.now();
+const CACHE_NAME = 'family-fitness-v3-' + Date.now();
 const urlsToCache = [
   './',
   './index.html',
@@ -32,7 +32,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames.map(function(cacheName) {
-          if (!cacheName.startsWith('family-fitness-v2')) {
+          if (!cacheName.startsWith('family-fitness-v3')) {
             console.log('오래된 캐시 삭제:', cacheName);
             return caches.delete(cacheName);
           }
