@@ -62,13 +62,9 @@ async function initializeApp() {
     // Firebase 실시간 동기화 설정
     setupFirebaseSync();
     
-    // 로딩 상태 최종 업데이트
+    // 로딩 완료 - 텍스트 제거
     if (loadingText) {
-        if (isFirebaseAvailable) {
-            loadingText.textContent = '🔥 가족 공유 모드 준비 완료!';
-        } else {
-            loadingText.textContent = '📱 로컬 모드로 시작합니다.';
-        }
+        loadingText.style.display = 'none';
     }
     
     // 3초 후 프로필 선택 화면으로 이동
@@ -108,7 +104,7 @@ function setupFirebaseSync() {
                     await updateProfileCards();
                 }
                 
-                showMessage("🔄 가족 데이터가 동기화되었습니다!");
+                showMessage("🔄 동기화 완료", true);
             }
         }, (error) => {
             console.warn("⚠️ Firebase 실시간 동기화 오류:", error);
@@ -1421,23 +1417,47 @@ async function saveData(data) {
 }
 
 // 메시지 표시
-function showMessage(message) {
+function showMessage(message, isSmall = false) {
     // 간단한 토스트 메시지 구현
     const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #4facfe;
-        color: white;
-        padding: 15px 25px;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        z-index: 10000;
-        font-weight: bold;
-        animation: slideIn 0.3s ease-out;
-    `;
+    
+    if (isSmall) {
+        // 작은 메시지 스타일
+        toast.style.cssText = `
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(79, 172, 254, 0.9);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 0.85rem;
+            font-weight: 500;
+            animation: slideIn 0.3s ease-out;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        `;
+    } else {
+        // 일반 메시지 스타일
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4facfe;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-weight: bold;
+            animation: slideIn 0.3s ease-out;
+        `;
+    }
+    
     toast.textContent = message;
     
     // 애니메이션 CSS 추가
@@ -1452,10 +1472,13 @@ function showMessage(message) {
     
     document.body.appendChild(toast);
     
+    // 작은 메시지는 더 짧게 표시
+    const displayTime = isSmall ? 1500 : 3000;
+    
     setTimeout(() => {
         toast.style.animation = 'slideIn 0.3s ease-out reverse';
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, displayTime);
 }
 
 // 앱 정보 표시
