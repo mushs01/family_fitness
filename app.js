@@ -1474,7 +1474,8 @@ async function migrateExistingPlansToMonthly() {
 // 운동 종류별 점수
 function getExerciseScore(exerciseType) {
     const scores = {
-        '달리기': 15,
+        '러닝': 15,
+        '달리기': 15,  // 기존 데이터 호환성
         '러닝머신': 15,
         '수영': 20,
         '자전거': 12,
@@ -1946,9 +1947,11 @@ function showAppInfo() {
             <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수 시스템:</h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수:</strong></div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏃‍♂️ 달리기: 15점/일 | 🏊‍♂️ 수영: 20점/일</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏋️‍♂️ 기구운동: 18점/일 | 🚴‍♂️ 자전거: 12점/일</div>
-                <div style="margin-left: 16px; margin-bottom: 12px;">🧘‍♀️ 요가: 10점/일 | 🚶‍♂️ 걷기: 8점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝: 15점/일 | 🏃‍♀️ 러닝머신: 15점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영: 20점/일 | 🏋️ 기구운동: 18점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거: 12점/일 | 🧘 요가: 10점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구: 15점/일 | ⚽ 축구: 15점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기: 8점/일 | 🏃‍♂️ 기타: 5점/일</div>
                 <div style="margin-bottom: 8px;"><strong>✅ 계획 추가 보너스:</strong> 1점 (완료 안해도 됨)</div>
                 <div style="margin-bottom: 8px;"><strong>❌ 계획 삭제:</strong> -1점</div>
                 <div><strong>📊 총점:</strong> 운동 완료 점수 + 계획 보너스 점수</div>
