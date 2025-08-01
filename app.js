@@ -98,56 +98,62 @@ async function clearAllCaches() {
     }
 }
 
-// 로딩 화면 배경 이미지 설정
+// 간단한 대체 이미지 (작고 가벼움)
+const SIMPLE_FALLBACK = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIj48c3RvcCBzdG9wLWNvbG9yPSIjNjY3ZWVhIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNzY0YmEyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7Rgb7stZw8L3RleHQ+PC9zdmc+";
+
+// 로딩 화면 배경 이미지 설정 (단순하고 가벼운 버전)
 function setLoadingBackground() {
     const loadingScreen = document.getElementById('loading-screen');
     if (!loadingScreen) return;
     
-    const img = new Image();
-    img.onload = function() {
-        console.log('✅ family_image.png 로드 성공!');
-        console.log('이미지 크기:', this.width, 'x', this.height);
-        
-        // JavaScript로 직접 배경 이미지 설정
-        loadingScreen.style.backgroundImage = `url('${this.src}')`;
-        loadingScreen.style.backgroundSize = 'cover';
-        loadingScreen.style.backgroundPosition = 'center';
-        loadingScreen.style.backgroundRepeat = 'no-repeat';
-        
-        console.log('✅ 로딩 화면 배경 이미지 설정 완료!');
-    };
-    img.onerror = function() {
-        console.error('❌ family_image.png 로드 실패!');
-        console.log('그라디언트 배경 유지');
-    };
+    console.log('🖼️ 로딩 이미지 설정 시작 (단순 버전)');
     
-    // 다양한 경로 시도
+    // 간단한 경로들만 시도
     const paths = [
         'https://mushs01.github.io/family_fitness/family_image.png',
         './family_image.png',
-        'family_image.png',
-        '/family_fitness/family_image.png'
+        'family_image.png'
     ];
     
-    function tryNextPath(index = 0) {
-        if (index >= paths.length) {
-            console.log('❌ 모든 경로 시도 실패');
+    let imageFound = false;
+    
+    function tryPath(index) {
+        if (index >= paths.length || imageFound) {
+            if (!imageFound) {
+                console.log('🎨 간단한 대체 이미지 사용');
+                loadingScreen.style.backgroundImage = `url('${SIMPLE_FALLBACK}')`;
+                loadingScreen.style.backgroundSize = 'cover';
+                loadingScreen.style.backgroundPosition = 'center';
+            }
             return;
         }
         
-        const testImg = new Image();
-        testImg.onload = function() {
-            console.log('✅ 성공한 경로:', paths[index]);
-            img.src = this.src; // 성공한 경로로 메인 이미지 로드
+        const img = new Image();
+        img.onload = function() {
+            if (!imageFound) {
+                imageFound = true;
+                console.log('✅ 이미지 로드 성공:', paths[index]);
+                loadingScreen.style.backgroundImage = `url('${this.src}')`;
+                loadingScreen.style.backgroundSize = 'cover';
+                loadingScreen.style.backgroundPosition = 'center';
+                loadingScreen.style.backgroundRepeat = 'no-repeat';
+            }
         };
-        testImg.onerror = function() {
-            console.log('❌ 실패한 경로:', paths[index]);
-            tryNextPath(index + 1); // 다음 경로 시도
+        img.onerror = function() {
+            console.log('❌ 실패:', paths[index]);
+            tryPath(index + 1);
         };
-        testImg.src = paths[index];
+        img.src = paths[index];
+        
+        // 1초 후 다음 경로 시도
+        setTimeout(() => {
+            if (!imageFound) {
+                tryPath(index + 1);
+            }
+        }, 1000);
     }
     
-    tryNextPath();
+    tryPath(0);
 }
 
 // 앱 초기화
