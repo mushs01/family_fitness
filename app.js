@@ -779,7 +779,7 @@ async function updatePlansList() {
     
     if (profileData.exercisePlans.length === 0) {
         plansList.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: 40px; color: white; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <div class="empty-state" style="text-align: center; padding: 40px; color: black; background: rgba(255,255,255,0.1); border-radius: 10px;">
                 <p style="font-size: 1.2rem; margin-bottom: 10px;">아직 운동 계획이 없습니다.</p>
                 <p style="font-size: 1rem;">새 계획을 추가해보세요! 💪</p>
             </div>
@@ -798,7 +798,7 @@ async function updatePlansList() {
     // 필터링된 계획이 없는 경우
     if (activePlans.length === 0) {
         plansList.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: 40px; color: white; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <div class="empty-state" style="text-align: center; padding: 40px; color: black; background: rgba(255,255,255,0.1); border-radius: 10px;">
                 <p style="font-size: 1.2rem; margin-bottom: 10px;">현재 진행 중인 운동 계획이 없습니다.</p>
                 <p style="font-size: 1rem;">새 계획을 추가해보세요! 💪</p>
             </div>
