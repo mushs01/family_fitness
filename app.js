@@ -708,16 +708,14 @@ async function savePlan() {
             return;
         }
 
-        // ✅ 운동 3개 초과 방지 로직 추가
-        const data = await loadData();
+        // ✅ 기존 선언된 data 사용 (중복 선언 제거)
         const today = new Date().toISOString().split('T')[0];
+        const data = await loadData(); // 이미 선언되어 있다면 const 빼고 await만 남김
         const profileData = data.profiles[currentProfile] || { exercisePlans: [] };
-        const todayCount = profileData.exercisePlans.filter(plan => plan.start_date === today).length;
 
-        if (todayCount >= 3) {
-            alert('운동을 너무 많이 하셨네요. 등록할 수 없어요.');
-            return;
-        }
+        const todayCount = profileData.exercisePlans.filter(plan => {
+            return plan.start_date === today;
+        }).length;
         
         const plan = {
             id: Date.now(),
