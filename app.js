@@ -36,33 +36,57 @@ const STORAGE_KEY = 'family_fitness_data';
 
 // PWA 캐시 강제 업데이트 (모바일 앱에서 중요)
 async function forceCacheUpdate() {
+    console.log('🧹 강력한 캐시 정리 시작...');
+    
+    // 모든 캐시 강제 삭제
+    if ('caches' in window) {
+        try {
+            const cacheNames = await caches.keys();
+            console.log('발견된 캐시들:', cacheNames);
+            
+            await Promise.all(cacheNames.map(async (cacheName) => {
+                await caches.delete(cacheName);
+                console.log('❌ 캐시 삭제:', cacheName);
+            }));
+            
+            console.log('✅ 모든 캐시 삭제 완료');
+        } catch (error) {
+            console.warn('⚠️ 캐시 삭제 실패:', error);
+        }
+    }
+    
+    // Service Worker 완전 재시작
     if ('serviceWorker' in navigator) {
         try {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (let registration of registrations) {
-                console.log('🔄 Service Worker 업데이트 확인 중...');
-                await registration.update();
-                
-                // 새 버전이 있으면 강제로 활성화
-                if (registration.waiting) {
-                    console.log('📦 새 버전 발견 - 강제 활성화');
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
+                console.log('🔄 Service Worker 재등록 중...');
+                await registration.unregister();
+                console.log('❌ Service Worker 등록 해제됨');
             }
+            
+            // 새로 등록
+            setTimeout(async () => {
+                try {
+                    const newReg = await navigator.serviceWorker.register('./sw.js');
+                    console.log('✅ Service Worker 새로 등록됨');
+                } catch (error) {
+                    console.warn('⚠️ Service Worker 재등록 실패:', error);
+                }
+            }, 1000);
+            
         } catch (error) {
-            console.warn('⚠️ Service Worker 업데이트 실패:', error);
+            console.warn('⚠️ Service Worker 처리 실패:', error);
         }
     }
     
-    // 캐시 버스팅을 위한 타임스탬프 추가
-    const now = Date.now();
-    console.log('⏰ 캐시 버스팅 타임스탬프:', now);
-    
-    // 메타 태그로 캐시 무효화
+    // 브라우저 캐시 무효화
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Cache-Control';
     meta.content = 'no-cache, no-store, must-revalidate';
     document.head.appendChild(meta);
+    
+    console.log('⏰ 캐시 버스팅 타임스탬프:', Date.now());
 }
 
 // 초기화
