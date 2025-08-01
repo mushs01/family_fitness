@@ -2,14 +2,15 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>우리가족 운동관리</title>
+    <meta name="description" content="가족 모두의 운동을 체계적으로 관리하는 웹앱">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2196F3">
+    <meta name="theme-color" content="#4facfe">
     <!-- PWA 설정 -->
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="family_image.png">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="우리가족 운동관리">
     
@@ -22,9 +23,11 @@
 <body>
     <!-- 로딩 화면 -->
     <div id="loading-screen" class="screen active">
-        <div class="loading-container">
-            <img src="family_image.png" alt="가족 사진" class="loading-icon">
+        <div class="loading-overlay"></div>
+        <div class="loading-header">
             <h1 class="loading-title">우리가족 운동관리</h1>
+        </div>
+        <div class="loading-container">
             <div class="loading-spinner"></div>
             <p class="loading-text">로딩 중...</p>
         </div>
@@ -188,5 +191,20 @@
     </div>
 
     <script src="app.js"></script>
+    
+    <!-- Service Worker 등록 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function(registration) {
+                        console.log('Service Worker 등록 성공:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Service Worker 등록 실패:', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
