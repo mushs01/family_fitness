@@ -707,6 +707,17 @@ async function savePlan() {
             alert('시작 날짜는 종료 날짜보다 빨라야 합니다.');
             return;
         }
+
+        // ✅ 운동 3개 초과 방지 로직 추가
+        const data = await loadData();
+        const today = new Date().toISOString().split('T')[0];
+        const profileData = data.profiles[currentProfile] || { exercisePlans: [] };
+        const todayCount = profileData.exercisePlans.filter(plan => plan.start_date === today).length;
+
+        if (todayCount >= 3) {
+            alert('운동을 너무 많이 하셨네요. 등록할 수 없어요.');
+            return;
+        }
         
         const plan = {
             id: Date.now(),
