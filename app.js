@@ -1956,12 +1956,12 @@ function showAppInfo() {
             
             <h3 style="color: #ff9800; margin: 20px 0 10px;">🏰 계급은 또 뭐야? </h3>
             <div style="text-align: left; background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="margin-bottom: 8px;"><strong>✨ 신:</strong> 400점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>👑 왕:</strong> 300점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>🛡️ 백작:</strong> 200점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>🏇 기사:</strong> 120점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>🌾 농민:</strong> 50점 이상</div>
-                <div><strong>⛓️ 노예:</strong> 50점 미만ㅠㅠ</div>
+                <div style="margin-bottom: 8px;"><strong>✨ 신 </strong> 400점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>👑 왕 </strong> 300점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>🛡️ 백작 </strong> 200점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>🏇 기사 </strong> 120점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>🌾 농민 </strong> 50점 이상</div>
+                <div><strong>⛓️ 노예 </strong> 50점 미만ㅠㅠ</div>
             </div>
             
             <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 이런것도 되요! </h3>
