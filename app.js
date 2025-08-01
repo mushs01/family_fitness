@@ -53,6 +53,12 @@ async function initializeApp() {
     // 데이터 로드
     await loadData();
     
+    // 기존 계획들을 월별 데이터로 마이그레이션
+    if (loadingText) {
+        loadingText.textContent = '기존 데이터 마이그레이션 중...';
+    }
+    await migrateExistingPlansToMonthly();
+    
     // Firebase 실시간 동기화 설정
     setupFirebaseSync();
     
@@ -430,8 +436,9 @@ function createPlanElement(plan) {
         </div>
         <div class="plan-content">${plan.exercise_content}</div>
         <div class="plan-dates">${plan.start_date} ~ ${plan.end_date}</div>
-        <div class="plan-progress">
-            완료: ${completedCount}/${totalDays}일 (${progressPercent}%)
+        <div class="plan-progress" data-plan-id="${plan.id}" style="cursor: pointer; padding: 5px; border-radius: 4px; transition: background-color 0.2s; ${isInPeriod ? 'background-color: #f0f8ff;' : 'background-color: #f5f5f5;'}" 
+             title="${isInPeriod ? (isCompletedToday ? '클릭하여 오늘 완료 취소' : '클릭하여 오늘 완료 처리') : '계획 기간이 아닙니다'}">
+            완료: ${completedCount}/${totalDays}일 (${progressPercent}%) ${isInPeriod ? (isCompletedToday ? '✅' : '⭕') : '⏸️'}
         </div>
         ${isInPeriod ? `
         <div class="plan-actions" style="margin-top: 10px; text-align: center;">
@@ -465,9 +472,27 @@ function createPlanElement(plan) {
         });
     }
     
-    // 계획 카드 클릭 이벤트 (완료 버튼 제외)
+    // 진행률 클릭 이벤트 추가 (완료/취소 처리)
+    const progressElement = element.querySelector('.plan-progress');
+    if (progressElement) {
+        progressElement.addEventListener('click', async function(e) {
+            e.stopPropagation(); // 부모 클릭 이벤트 방지
+            
+            // 계획 기간에 포함되는 경우에만 완료/취소 처리
+            if (isInPeriod) {
+                const planId = parseInt(this.dataset.planId);
+                await toggleExerciseCompletion(planId);
+            } else {
+                alert('해당 계획의 기간이 아닙니다.');
+            }
+        });
+    }
+    
+    // 계획 카드 클릭 이벤트 (완료 버튼, 진행률, 메뉴 버튼 제외)
     element.addEventListener('click', async function(e) {
-        if (!e.target.classList.contains('complete-btn')) {
+        if (!e.target.classList.contains('complete-btn') && 
+            !e.target.classList.contains('plan-progress') && 
+            !e.target.classList.contains('plan-menu-btn')) {
             await showPlanCalendar(plan);
         }
     });
@@ -963,6 +988,63 @@ function checkMonthlyReset() {
     }
     
     return false; // 동일한 월
+}
+
+// 기존 계획들을 월별 데이터로 마이그레이션
+async function migrateExistingPlansToMonthly() {
+    try {
+        const data = await loadData();
+        let hasChanges = false;
+        
+        const profiles = ['아빠', '엄마', '주환', '태환'];
+        
+        for (const profileName of profiles) {
+            const profileData = data.profiles[profileName];
+            if (!profileData || !profileData.exercisePlans) continue;
+            
+            // monthlyData가 없으면 초기화
+            if (!profileData.monthlyData) {
+                profileData.monthlyData = {};
+                hasChanges = true;
+            }
+            
+            // 각 계획을 해당 월별 데이터에 추가
+            profileData.exercisePlans.forEach(plan => {
+                // 계획 시작 날짜의 월 키 생성
+                const planStartDate = new Date(plan.start_date);
+                const planMonth = `${planStartDate.getFullYear()}-${String(planStartDate.getMonth() + 1).padStart(2, '0')}`;
+                
+                // 해당 월 데이터가 없으면 생성
+                if (!profileData.monthlyData[planMonth]) {
+                    profileData.monthlyData[planMonth] = {
+                        exercisePlans: [],
+                        score: 0,
+                        completedCount: 0
+                    };
+                    hasChanges = true;
+                }
+                
+                // 이미 해당 월에 이 계획이 있는지 확인
+                const existingPlan = profileData.monthlyData[planMonth].exercisePlans.find(p => p.id === plan.id);
+                if (!existingPlan) {
+                    profileData.monthlyData[planMonth].exercisePlans.push(plan);
+                    hasChanges = true;
+                    console.log(`${profileName} - ${planMonth}월에 계획 추가:`, plan.exercise_type);
+                }
+            });
+        }
+        
+        if (hasChanges) {
+            await saveData(data);
+            console.log('기존 계획들을 월별 데이터로 마이그레이션 완료');
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('마이그레이션 중 오류:', error);
+        return false;
+    }
 }
 
 // 운동 종류별 점수
