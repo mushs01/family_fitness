@@ -2,6 +2,7 @@
   "name": "우리가족 운동관리",
   "short_name": "가족운동",
   "description": "가족 모두의 운동을 체계적으로 관리하는 웹앱",
+  "version": "2.0",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#667eea",
