@@ -34,8 +34,48 @@ try {
 // 로컬 스토리지 키
 const STORAGE_KEY = 'family_fitness_data';
 
+// PWA 캐시 강제 업데이트 (모바일 앱에서 중요)
+async function forceCacheUpdate() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let registration of registrations) {
+                console.log('🔄 Service Worker 업데이트 확인 중...');
+                await registration.update();
+                
+                // 새 버전이 있으면 강제로 활성화
+                if (registration.waiting) {
+                    console.log('📦 새 버전 발견 - 강제 활성화');
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Service Worker 업데이트 실패:', error);
+        }
+    }
+    
+    // 캐시 버스팅을 위한 타임스탬프 추가
+    const now = Date.now();
+    console.log('⏰ 캐시 버스팅 타임스탬프:', now);
+    
+    // 메타 태그로 캐시 무효화
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Cache-Control';
+    meta.content = 'no-cache, no-store, must-revalidate';
+    document.head.appendChild(meta);
+}
+
 // 초기화
 document.addEventListener('DOMContentLoaded', async function() {
+    // 모바일/PWA에서 캐시 업데이트 먼저 실행
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    
+    if (isMobile || isPWA) {
+        console.log('📱 모바일/PWA 환경에서 캐시 업데이트 실행');
+        await forceCacheUpdate();
+    }
+    
     await initializeApp();
 });
 
@@ -115,6 +155,11 @@ async function initializeApp() {
     try {
         console.log('🚀 앱 초기화 시작');
         
+        // 모바일 환경 감지 (먼저 정의)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+        console.log('📱 모바일 감지:', isMobile, 'PWA 모드:', isPWA);
+        
         // 로딩 화면 표시
         showScreen('loading-screen');
         console.log('✅ 로딩 화면 표시됨');
@@ -148,40 +193,131 @@ async function initializeApp() {
         setupFirebaseSync();
         console.log('✅ Firebase 동기화 설정 완료');
         
-        // 로딩 완료 - 텍스트 제거
+        // 로딩 완료 - 텍스트를 "터치하여 계속" 으로 변경 (모바일용)
         if (loadingText) {
-            loadingText.style.display = 'none';
+            if (isMobile || isPWA) {
+                loadingText.textContent = '터치하여 계속하기';
+                loadingText.style.color = '#4CAF50';
+                loadingText.style.cursor = 'pointer';
+                loadingText.style.fontSize = '18px';
+                loadingText.style.fontWeight = 'bold';
+                loadingText.style.animation = 'pulse 2s infinite';
+                
+                // 터치 이벤트로 즉시 전환
+                const touchHandler = async () => {
+                    if (!transitionCompleted) {
+                        transitionCompleted = true;
+                        loadingText.textContent = '전환 중...';
+                        await performScreenTransition('touch');
+                    }
+                };
+                
+                loadingText.addEventListener('click', touchHandler);
+                loadingText.addEventListener('touchstart', touchHandler);
+                
+                console.log('👆 모바일: 터치하여 계속하기 활성화');
+            } else {
+                loadingText.style.display = 'none';
+            }
         }
-        console.log('✅ 로딩 텍스트 숨김');
+        console.log('✅ 로딩 텍스트 처리 완료');
         
         // 이벤트 리스너 설정
         console.log('⚡ 이벤트 리스너 설정...');
         setupEventListeners();
         console.log('✅ 이벤트 리스너 설정 완료');
         
-        // 3초 후 프로필 선택 화면으로 이동
+        // 모바일에서 더 안전한 화면 전환을 위한 다중 방법 사용
+        let transitionCompleted = false;
+        
+        // 방법 1: 일반 setTimeout (3초)
         console.log('⏰ 3초 후 프로필 화면으로 이동 예약됨');
+        const timeoutId = setTimeout(async () => {
+            if (!transitionCompleted) {
+                transitionCompleted = true;
+                await performScreenTransition('timeout');
+            }
+        }, 3000);
+        
+        // 방법 2: 모바일에서 더 빠른 대안 (2초)
+        if (isMobile || isPWA) {
+            console.log('📱 모바일/PWA용 빠른 전환 타이머 설정 (2초)');
+            setTimeout(async () => {
+                if (!transitionCompleted) {
+                    transitionCompleted = true;
+                    clearTimeout(timeoutId);
+                    await performScreenTransition('mobile-fast');
+                }
+            }, 2000);
+        }
+        
+        // 방법 3: Page Visibility API로 포그라운드 복귀시 즉시 전환
+        let visibilityTimer;
+        const handleVisibilityChange = async () => {
+            if (!document.hidden && !transitionCompleted) {
+                console.log('👁️ 페이지가 포그라운드로 복귀 - 즉시 전환');
+                transitionCompleted = true;
+                clearTimeout(timeoutId);
+                clearTimeout(visibilityTimer);
+                await performScreenTransition('visibility');
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // 방법 4: 강제 전환 (10초 후 - 백업)
         setTimeout(async () => {
+            if (!transitionCompleted) {
+                console.log('🚨 강제 전환 실행 (10초 경과)');
+                transitionCompleted = true;
+                await performScreenTransition('force');
+            }
+        }, 10000);
+        
+        // 화면 전환 실행 함수
+        async function performScreenTransition(method) {
             try {
-                console.log('🔄 프로필 화면으로 전환 시작');
+                console.log(`🔄 프로필 화면으로 전환 시작 (${method} 방법)`);
                 showScreen('profile-screen');
                 console.log('✅ 프로필 화면 표시됨');
                 
-                console.log('📊 랭킹 업데이트 시작...');
-                await updateRanking();
-                console.log('✅ 랭킹 업데이트 완료');
+                // 모바일에서는 UI 업데이트를 나중에 처리
+                if (isMobile || isPWA) {
+                    setTimeout(async () => {
+                        try {
+                            console.log('📊 랭킹 업데이트 시작... (모바일 지연)');
+                            await updateRanking();
+                            console.log('✅ 랭킹 업데이트 완료');
+                            
+                            console.log('👥 프로필 카드 업데이트 시작... (모바일 지연)');
+                            await updateProfileCards();
+                            console.log('✅ 프로필 카드 업데이트 완료');
+                            
+                            console.log('🎉 앱 초기화 완전히 완료! (모바일)');
+                        } catch (error) {
+                            console.error('❌ 모바일 UI 업데이트 중 오류:', error);
+                        }
+                    }, 500);
+                } else {
+                    console.log('📊 랭킹 업데이트 시작...');
+                    await updateRanking();
+                    console.log('✅ 랭킹 업데이트 완료');
+                    
+                    console.log('👥 프로필 카드 업데이트 시작...');
+                    await updateProfileCards();
+                    console.log('✅ 프로필 카드 업데이트 완료');
+                    
+                    console.log('🎉 앱 초기화 완전히 완료!');
+                }
                 
-                console.log('👥 프로필 카드 업데이트 시작...');
-                await updateProfileCards();
-                console.log('✅ 프로필 카드 업데이트 완료');
+                // 이벤트 리스너 정리
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
                 
-                console.log('🎉 앱 초기화 완전히 완료!');
             } catch (error) {
                 console.error('❌ 프로필 화면 전환 중 오류:', error);
                 // 오류 발생 시에도 프로필 화면으로 이동
                 showScreen('profile-screen');
             }
-        }, 3000);
+        }
         
         console.log('✅ 앱 초기화 메인 단계 완료');
         
