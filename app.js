@@ -1931,9 +1931,9 @@ function showAppInfo() {
     
     modal.innerHTML = `
         <div style="background: white; border-radius: 15px; padding: 20px; max-width: 500px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: center;">
-            <h2 style="color: #4a5568; margin-bottom: 20px;">🔥 우리가족 운동관리 웹앱 </h2>
-            <p style="margin-bottom: 15px; line-height: 1.6;">🏃‍♂️ 가족 모두의 운동을 체계적으로 관리하세요!</p>
-            <p style="margin-bottom: 15px; line-height: 1.6;">📊 운동하고 점수를 획득하고 랭킹을 확인하세요!</p>
+            <h2 style="color: #4a5568; margin-bottom: 20px;">🔥 우리가족 운동관리 앱 🔥</h2>
+            <p style="margin-bottom: 15px; line-height: 1.6;">🏃‍♂️ 모두의 운동을 관리할 수 있어요 </p>
+            <p style="margin-bottom: 15px; line-height: 1.6;">📊 운동하고 점수를 획득하고 랭킹을 확인하세요 </p>
             
             <h3 style="color: #4a5568; margin: 20px 0 10px;">💡 어떻게 사용해? </h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
@@ -1965,7 +1965,7 @@ function showAppInfo() {
                 <div><strong>⛓️ 노예:</strong> 0-49점</div>
             </div>
             
-            <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 실시간 공유:</h3>
+            <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 이런것도 되요! </h3>
             <div style="text-align: left; background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <div style="margin-bottom: 8px;">✅ <strong>실시간 동기화:</strong> 운동 완료시 즉시 공유</div>
                 <div style="margin-bottom: 8px;">✅ <strong>클라우드 백업:</strong> 데이터 분실 걱정 없음</div>
