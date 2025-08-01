@@ -223,34 +223,11 @@ async function initializeApp() {
         setupFirebaseSync();
         console.log('✅ Firebase 동기화 설정 완료');
         
-        // 로딩 완료 - 텍스트를 "터치하여 계속" 으로 변경 (모바일용)
+        // 로딩 완료 - 텍스트 숨기기
         if (loadingText) {
-            if (isMobile || isPWA) {
-                loadingText.textContent = '터치하여 계속하기';
-                loadingText.style.color = '#4CAF50';
-                loadingText.style.cursor = 'pointer';
-                loadingText.style.fontSize = '18px';
-                loadingText.style.fontWeight = 'bold';
-                loadingText.style.animation = 'pulse 2s infinite';
-                
-                // 터치 이벤트로 즉시 전환
-                const touchHandler = async () => {
-                    if (!transitionCompleted) {
-                        transitionCompleted = true;
-                        loadingText.textContent = '전환 중...';
-                        await performScreenTransition('touch');
-                    }
-                };
-                
-                loadingText.addEventListener('click', touchHandler);
-                loadingText.addEventListener('touchstart', touchHandler);
-                
-                console.log('👆 모바일: 터치하여 계속하기 활성화');
-            } else {
-                loadingText.style.display = 'none';
-            }
+            loadingText.style.display = 'none';
         }
-        console.log('✅ 로딩 텍스트 처리 완료');
+        console.log('✅ 로딩 텍스트 숨김');
         
         // 이벤트 리스너 설정
         console.log('⚡ 이벤트 리스너 설정...');
