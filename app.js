@@ -1946,23 +1946,22 @@ function showAppInfo() {
             <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수는 어떻게 받아? </h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수:</strong></div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝: 15점 | 🏃‍♀️ 러닝머신: 15점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영: 20점 | 🏋️ 기구운동: 18점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거: 12점 | 🧘 요가: 10점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구: 15점 | ⚽ 축구: 15점</div>
-                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기: 8점 | 🏃‍♂️ 기타: 5점</div>
-                <div style="margin-bottom: 8px;"><strong>✅ 계획 추가 보너스:</strong> 1점 - 완료 안해도 됨 </div>
-                <div><strong>📊 총점:</strong> 운동 완료 점수 + 계획 보너스 점수</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝: 15점  🏃‍♀️ 러닝머신: 15점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영: 20점  🏋️ 기구운동: 18점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거: 12점  🧘 요가: 10점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구: 15점  ⚽ 축구: 15점</div>
+                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기: 8점  🏃‍♂️ 기타: 5점</div>
+                <div style="margin-bottom: 8px;"><strong>✅ 계획 등록만 해도 </strong> 1점 </div>
             </div>
             
             <h3 style="color: #ff9800; margin: 20px 0 10px;">🏰 계급은 또 뭐야? </h3>
             <div style="text-align: left; background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="margin-bottom: 8px;"><strong>✨ 신:</strong> 400점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>👑 왕:</strong> 300-399점</div>
-                <div style="margin-bottom: 8px;"><strong>🛡️ 백작:</strong> 200-299점</div>
-                <div style="margin-bottom: 8px;"><strong>🏇 기사:</strong> 120-199점</div>
-                <div style="margin-bottom: 8px;"><strong>🌾 농민:</strong> 50-119점</div>
-                <div><strong>⛓️ 노예:</strong> 0-49점</div>
+                <div style="margin-bottom: 8px;"><strong>👑 왕:</strong> 300점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>🛡️ 백작:</strong> 200점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>🏇 기사:</strong> 120점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>🌾 농민:</strong> 50점 이상</div>
+                <div><strong>⛓️ 노예:</strong> 50점 미만ㅠㅠ</div>
             </div>
             
             <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 이런것도 되요! </h3>
