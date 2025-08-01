@@ -1400,12 +1400,12 @@ function showAppInfo() {
             <p style="margin-bottom: 20px; line-height: 1.6;">🔥 Firebase 실시간 공유로 가족과 함께하세요!</p>
             
             <h3 style="color: #4a5568; margin: 20px 0 10px;">💡 사용법:</h3>
-            <ol style="text-align: left; margin-bottom: 20px; line-height: 1.6;">
-                <li>프로필을 선택하세요</li>
-                <li>운동 계획을 추가하세요</li>
-                <li><strong>💪 오늘 완료하기</strong> 버튼으로 운동 완료!</li>
-                <li>점수를 획득하고 가족 랭킹을 확인하세요</li>
-            </ol>
+            <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="margin-bottom: 8px;"><strong>1.</strong> 프로필을 선택하세요</div>
+                <div style="margin-bottom: 8px;"><strong>2.</strong> 운동 계획을 추가하세요</div>
+                <div style="margin-bottom: 8px;"><strong>3.</strong> <strong>💪 오늘 완료하기</strong> 버튼으로 운동 완료!</div>
+                <div><strong>4.</strong> 점수를 획득하고 가족 랭킹을 확인하세요</div>
+            </div>
             
             <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수 시스템:</h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
