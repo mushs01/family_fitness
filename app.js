@@ -58,58 +58,149 @@ async function clearAllCaches() {
     }
 }
 
-// 이미지 로드 확인 함수
-function checkImageLoad() {
+// 로딩 화면 배경 이미지 설정
+function setLoadingBackground() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (!loadingScreen) return;
+    
     const img = new Image();
     img.onload = function() {
         console.log('✅ family_image.png 로드 성공!');
+        console.log('이미지 크기:', this.width, 'x', this.height);
+        
+        // JavaScript로 직접 배경 이미지 설정
+        loadingScreen.style.backgroundImage = `url('${this.src}')`;
+        loadingScreen.style.backgroundSize = 'cover';
+        loadingScreen.style.backgroundPosition = 'center';
+        loadingScreen.style.backgroundRepeat = 'no-repeat';
+        
+        console.log('✅ 로딩 화면 배경 이미지 설정 완료!');
     };
     img.onerror = function() {
         console.error('❌ family_image.png 로드 실패!');
-        console.log('이미지 경로 확인: ./family_image.png');
+        console.log('그라디언트 배경 유지');
     };
-    img.src = './family_image.png';
+    
+    // 다양한 경로 시도
+    const paths = [
+        'https://mushs01.github.io/family_fitness/family_image.png',
+        './family_image.png',
+        'family_image.png',
+        '/family_fitness/family_image.png'
+    ];
+    
+    function tryNextPath(index = 0) {
+        if (index >= paths.length) {
+            console.log('❌ 모든 경로 시도 실패');
+            return;
+        }
+        
+        const testImg = new Image();
+        testImg.onload = function() {
+            console.log('✅ 성공한 경로:', paths[index]);
+            img.src = this.src; // 성공한 경로로 메인 이미지 로드
+        };
+        testImg.onerror = function() {
+            console.log('❌ 실패한 경로:', paths[index]);
+            tryNextPath(index + 1); // 다음 경로 시도
+        };
+        testImg.src = paths[index];
+    }
+    
+    tryNextPath();
 }
 
 // 앱 초기화
 async function initializeApp() {
-    // 이미지 로드 상태 확인
-    checkImageLoad();
-    
-    // 로딩 화면 표시
-    showScreen('loading-screen');
-    
-    // 로딩 상태 업데이트
-    const loadingText = document.querySelector('.loading-text');
-    if (loadingText) {
-        loadingText.textContent = 'Firebase 연결 중...';
+    try {
+        console.log('🚀 앱 초기화 시작');
+        
+        // 로딩 화면 표시
+        showScreen('loading-screen');
+        console.log('✅ 로딩 화면 표시됨');
+        
+        // 배경 이미지 설정
+        setLoadingBackground();
+        console.log('✅ 배경 이미지 설정 완료');
+        
+        // 로딩 상태 업데이트
+        const loadingText = document.querySelector('.loading-text');
+        if (loadingText) {
+            loadingText.textContent = 'Firebase 연결 중...';
+            console.log('✅ 로딩 텍스트 업데이트됨');
+        }
+        
+        // 데이터 로드
+        console.log('📊 데이터 로드 시작...');
+        await loadData();
+        console.log('✅ 데이터 로드 완료');
+        
+        // 기존 계획들을 월별 데이터로 마이그레이션
+        if (loadingText) {
+            loadingText.textContent = '기존 데이터 마이그레이션 중...';
+        }
+        console.log('🔄 데이터 마이그레이션 시작...');
+        await migrateExistingPlansToMonthly();
+        console.log('✅ 데이터 마이그레이션 완료');
+        
+        // Firebase 실시간 동기화 설정
+        console.log('🔥 Firebase 동기화 설정...');
+        setupFirebaseSync();
+        console.log('✅ Firebase 동기화 설정 완료');
+        
+        // 로딩 완료 - 텍스트 제거
+        if (loadingText) {
+            loadingText.style.display = 'none';
+        }
+        console.log('✅ 로딩 텍스트 숨김');
+        
+        // 이벤트 리스너 설정
+        console.log('⚡ 이벤트 리스너 설정...');
+        setupEventListeners();
+        console.log('✅ 이벤트 리스너 설정 완료');
+        
+        // 3초 후 프로필 선택 화면으로 이동
+        console.log('⏰ 3초 후 프로필 화면으로 이동 예약됨');
+        setTimeout(async () => {
+            try {
+                console.log('🔄 프로필 화면으로 전환 시작');
+                showScreen('profile-screen');
+                console.log('✅ 프로필 화면 표시됨');
+                
+                console.log('📊 랭킹 업데이트 시작...');
+                await updateRanking();
+                console.log('✅ 랭킹 업데이트 완료');
+                
+                console.log('👥 프로필 카드 업데이트 시작...');
+                await updateProfileCards();
+                console.log('✅ 프로필 카드 업데이트 완료');
+                
+                console.log('🎉 앱 초기화 완전히 완료!');
+            } catch (error) {
+                console.error('❌ 프로필 화면 전환 중 오류:', error);
+                // 오류 발생 시에도 프로필 화면으로 이동
+                showScreen('profile-screen');
+            }
+        }, 3000);
+        
+        console.log('✅ 앱 초기화 메인 단계 완료');
+        
+    } catch (error) {
+        console.error('❌ 앱 초기화 중 치명적 오류:', error);
+        
+        // 오류 발생 시 사용자에게 알림
+        const loadingText = document.querySelector('.loading-text');
+        if (loadingText) {
+            loadingText.textContent = '오류가 발생했습니다. 잠시 후 다시 시도합니다...';
+            loadingText.style.color = '#ff6b6b';
+        }
+        
+        // 5초 후 강제로 프로필 화면으로 이동
+        setTimeout(() => {
+            console.log('🔄 오류 복구: 프로필 화면으로 강제 이동');
+            showScreen('profile-screen');
+        }, 5000);
     }
-    
-    // 데이터 로드
-    await loadData();
-    
-    // 기존 계획들을 월별 데이터로 마이그레이션
-    if (loadingText) {
-        loadingText.textContent = '기존 데이터 마이그레이션 중...';
-    }
-    await migrateExistingPlansToMonthly();
-    
-    // Firebase 실시간 동기화 설정
-    setupFirebaseSync();
-    
-    // 로딩 완료 - 텍스트 제거
-    if (loadingText) {
-        loadingText.style.display = 'none';
-    }
-    
-    // 3초 후 프로필 선택 화면으로 이동
-    setTimeout(async () => {
-        showScreen('profile-screen');
-        await updateRanking();
-        await updateProfileCards();
-    }, 3000);
-    
-    setupEventListeners();
 }
 
 // Firebase 실시간 동기화 설정
@@ -1024,14 +1115,28 @@ function checkMonthlyReset() {
 // 기존 계획들을 월별 데이터로 마이그레이션
 async function migrateExistingPlansToMonthly() {
     try {
+        console.log('🔄 마이그레이션 시작: 기존 계획들을 월별 데이터로 변환');
         const data = await loadData();
-        let hasChanges = false;
         
+        if (!data || !data.profiles) {
+            console.log('📝 데이터가 없음 - 마이그레이션 건너뜀');
+            return false;
+        }
+        
+        let hasChanges = false;
         const profiles = ['아빠', '엄마', '주환', '태환'];
         
         for (const profileName of profiles) {
             const profileData = data.profiles[profileName];
-            if (!profileData || !profileData.exercisePlans) continue;
+            if (!profileData) {
+                console.log(`⚠️ ${profileName} 프로필 데이터 없음`);
+                continue;
+            }
+            
+            if (!profileData.exercisePlans || !Array.isArray(profileData.exercisePlans)) {
+                console.log(`⚠️ ${profileName} 운동 계획 데이터 없음`);
+                continue;
+            }
             
             // monthlyData가 없으면 초기화
             if (!profileData.monthlyData) {
