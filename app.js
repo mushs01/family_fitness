@@ -1705,13 +1705,13 @@ function showMessage(message, isSmall = false) {
     const toast = document.createElement('div');
     
     if (isSmall) {
-        // 작은 메시지 스타일
+        // 작은 메시지 스타일 (투명 배경)
         toast.style.cssText = `
             position: fixed;
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(79, 172, 254, 0.9);
+            background: rgba(0, 0, 0, 0.3);
             color: white;
             padding: 8px 15px;
             border-radius: 20px;
@@ -1721,7 +1721,8 @@ function showMessage(message, isSmall = false) {
             font-weight: 500;
             animation: slideIn 0.3s ease-out;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         `;
     } else {
         // 일반 메시지 스타일
