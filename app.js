@@ -1946,11 +1946,11 @@ function showAppInfo() {
             <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수는 어떻게 받아? </h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수</strong></div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝: 15점  🏃‍♀️ 러닝머신: 15점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영: 20점  🏋️ 기구운동: 18점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거: 12점  🧘 요가: 10점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구: 15점  ⚽ 축구: 15점</div>
-                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기: 8점  🏃‍♂️ 기타: 5점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝 15점   🏃‍♀️ 러닝머신 15점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영 20점   🏋️ 기구운동 18점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거 12점   🧘 요가 10점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구 15점   ⚽ 축구 15점</div>
+                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기 8점   🏃‍♂️ 기타 5점</div>
                 <div style="margin-bottom: 8px;"><strong>✅ 계획 등록만 해도 </strong> 1점 </div>
             </div>
             
