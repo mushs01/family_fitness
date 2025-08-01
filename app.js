@@ -1481,6 +1481,8 @@ function getExerciseScore(exerciseType) {
         '기구운동': 18,
         '요가': 10,
         '걷기': 8,
+        '야구': 15,
+        '축구': 15,
         '기타': 5
     };
     return scores[exerciseType] || 5;
