@@ -119,14 +119,7 @@ function setupEventListeners() {
         });
     });
     
-    // 기본 설정 버튼
-    document.querySelectorAll('.set-default-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const profile = this.closest('.profile-card').dataset.profile;
-            setDefaultProfile(profile);
-        });
-    });
+
     
     // 뒤로 가기 버튼
     document.querySelector('.back-btn').addEventListener('click', async function() {
@@ -153,11 +146,21 @@ function setupEventListeners() {
         hideAddPlanPopup();
     });
     
-    // 계획 저장
-    document.getElementById('plan-form').addEventListener('submit', function(e) {
+    // 계획 저장 (기존 이벤트 리스너 제거 후 새로 등록)
+    const planForm = document.getElementById('plan-form');
+    if (planForm) {
+        // 기존 이벤트 리스너 제거
+        planForm.removeEventListener('submit', handlePlanSubmit);
+        // 새 이벤트 리스너 등록
+        planForm.addEventListener('submit', handlePlanSubmit);
+    }
+    
+    function handlePlanSubmit(e) {
         e.preventDefault();
+        console.log('폼 제출 이벤트 발생');
+        console.log('현재 프로필:', currentProfile);
         savePlan();
-    });
+    }
     
     // 캘린더 네비게이션 (단일 이벤트 리스너)
     document.querySelectorAll('.calendar-nav').forEach(btn => {
@@ -227,58 +230,23 @@ function getProfileImageSrc(profileName) {
     return imageMap[profileName] || 'icon.png';
 }
 
-// 기본 프로필 설정
-function setDefaultProfile(profileName) {
-    // 모든 기본 설정 버튼 초기화
-    document.querySelectorAll('.set-default-btn').forEach(btn => {
-        btn.classList.remove('active');
-        btn.textContent = '⭐ 기본설정';
-    });
-    
-    // 선택된 프로필의 버튼 활성화
-    const profileCard = document.querySelector(`[data-profile="${profileName}"]`);
-    const btn = profileCard.querySelector('.set-default-btn');
-    btn.classList.add('active');
-    btn.textContent = '❤️ 기본';
-    
-    // 로컬 스토리지에 저장
-    const data = loadData();
-    data.defaultProfile = profileName;
-    saveData(data);
-    
-    showMessage(`${profileName}님이 기본 프로필로 설정되었습니다.`);
-}
+
 
 // 탭 전환
 async function switchTab(tabName) {
-    console.log('switchTab 호출됨:', tabName);
-    
     // 탭 버튼 활성화
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-        console.log('탭 버튼 활성화됨:', tabName);
-    } else {
-        console.error('탭 버튼을 찾을 수 없음:', tabName);
-    }
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     
     // 탭 내용 표시
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    const activeTab = document.getElementById(`${tabName}-tab`);
-    if (activeTab) {
-        activeTab.classList.add('active');
-        console.log('탭 내용 활성화됨:', `${tabName}-tab`);
-    } else {
-        console.error('탭 내용을 찾을 수 없음:', `${tabName}-tab`);
-    }
+    document.getElementById(`${tabName}-tab`).classList.add('active');
     
     if (tabName === 'calendar') {
-        console.log('캘린더 탭으로 전환, updateCalendar 호출');
         await updateCalendar();
     } else {
         // 다른 탭으로 전환할 때 선택된 계획 초기화 (계획에서 직접 호출된 경우 제외)
@@ -306,38 +274,82 @@ function hideAddPlanPopup() {
 
 // 계획 저장
 async function savePlan() {
-    const formData = new FormData(document.getElementById('plan-form'));
-    const plan = {
-        id: Date.now(),
-        exercise_type: document.getElementById('exercise-type').value,
-        exercise_content: document.getElementById('exercise-content').value,
-        start_date: document.getElementById('start-date').value,
-        end_date: document.getElementById('end-date').value,
-        completed_dates: [],
-        created_date: new Date().toLocaleString('ko-KR')
-    };
+    try {
+        const exerciseType = document.getElementById('exercise-type').value;
+        const exerciseContent = document.getElementById('exercise-content').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        // 필수 필드 검증
+        if (!exerciseType || !exerciseContent || !startDate || !endDate) {
+            alert('모든 필드를 입력해주세요.');
+            return;
+        }
+        
+        // 날짜 검증
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('시작 날짜는 종료 날짜보다 빨라야 합니다.');
+            return;
+        }
+        
+        const plan = {
+            id: Date.now(),
+            exercise_type: exerciseType,
+            exercise_content: exerciseContent,
+            start_date: startDate,
+            end_date: endDate,
+            completed_dates: [],
+            created_date: new Date().toLocaleString('ko-KR')
+        };
+        
+        console.log('새 계획 생성:', plan);
     
     // 데이터 저장
-    const data = loadData();
+    const data = await loadData();
     if (!data.profiles[currentProfile]) {
         data.profiles[currentProfile] = { 
             exercisePlans: [], 
+            monthlyData: {},
             score: 0, 
             completedCount: 0 
         };
     }
+    
+    // 기존 exercisePlans에도 저장 (하위 호환성)
     data.profiles[currentProfile].exercisePlans.push(plan);
-    await saveData(data);
     
-    // UI 업데이트
-    updatePlansList();
-    hideAddPlanPopup();
+            // 현재 월별 데이터에도 저장
+        const currentMonth = getCurrentMonthKey();
+        console.log('현재 월:', currentMonth);
+        const monthlyData = getMonthlyData(data.profiles[currentProfile], currentMonth);
+        console.log('월별 데이터:', monthlyData);
+        monthlyData.exercisePlans.push(plan);
+        console.log('계획 추가 후 월별 데이터:', monthlyData);
+        console.log('데이터 저장 시작');
+        await saveData(data);
+        console.log('데이터 저장 완료');
+        
+        // UI 업데이트
+        console.log('UI 업데이트 시작');
+        await updatePlansList();
+        console.log('계획 목록 업데이트 완료');
+        await updateRanking();
+        console.log('랭킹 업데이트 완료');
+        hideAddPlanPopup();
+        console.log('팝업 숨김 완료');
     
-    // Firebase 연결 상태에 따른 메시지
-    if (isFirebaseAvailable) {
-        showMessage('🔥 새 운동 계획이 가족에게 공유되었습니다!');
-    } else {
-        showMessage('📱 새 운동 계획이 추가되었습니다! (로컬 저장)');
+        // Firebase 연결 상태에 따른 메시지
+        if (isFirebaseAvailable) {
+            showMessage('🔥 새 운동 계획이 가족에게 공유되었습니다!');
+        } else {
+            showMessage('📱 새 운동 계획이 추가되었습니다! (로컬 저장)');
+        }
+        
+        console.log('운동계획 저장 완료:', plan);
+        
+    } catch (error) {
+        console.error('계획 저장 중 오류:', error);
+        alert('계획 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
 }
 
@@ -443,6 +455,16 @@ function createPlanElement(plan) {
         });
     }
     
+    // 메뉴 버튼 이벤트 추가 (삭제 기능)
+    const menuBtn = element.querySelector('.plan-menu-btn');
+    if (menuBtn) {
+        menuBtn.addEventListener('click', async function(e) {
+            e.stopPropagation(); // 부모 클릭 이벤트 방지
+            const planId = parseInt(this.dataset.planId);
+            await showPlanDeleteConfirm(planId, plan);
+        });
+    }
+    
     // 계획 카드 클릭 이벤트 (완료 버튼 제외)
     element.addEventListener('click', async function(e) {
         if (!e.target.classList.contains('complete-btn')) {
@@ -451,6 +473,60 @@ function createPlanElement(plan) {
     });
     
     return element;
+}
+
+// 운동계획 삭제 확인 팝업
+async function showPlanDeleteConfirm(planId, plan) {
+    const confirmMessage = `운동계획을 삭제하시겠습니까?\n\n${plan.exercise_type}: ${plan.exercise_content}\n기간: ${plan.start_date} ~ ${plan.end_date}\n\n⚠️ 삭제하면 계획 점수(-1점)가 차감됩니다.`;
+    
+    if (confirm(confirmMessage)) {
+        await deletePlan(planId);
+    }
+}
+
+// 운동계획 삭제 함수
+async function deletePlan(planId) {
+    try {
+        const data = await loadData();
+        const profileData = data.profiles[currentProfile];
+        
+        if (!profileData || !profileData.exercisePlans) {
+            console.error('프로필 데이터가 없습니다.');
+            return;
+        }
+        
+        // 기존 exercisePlans에서 삭제
+        const planIndex = profileData.exercisePlans.findIndex(plan => plan.id === planId);
+        if (planIndex === -1) {
+            console.error('삭제할 계획을 찾을 수 없습니다.');
+            return;
+        }
+        
+        profileData.exercisePlans.splice(planIndex, 1);
+        
+        // 월별 데이터에서도 삭제
+        const currentMonth = getCurrentMonthKey();
+        const monthlyData = getMonthlyData(profileData, currentMonth);
+        if (monthlyData.exercisePlans) {
+            const monthlyPlanIndex = monthlyData.exercisePlans.findIndex(plan => plan.id === planId);
+            if (monthlyPlanIndex !== -1) {
+                monthlyData.exercisePlans.splice(monthlyPlanIndex, 1);
+            }
+        }
+        
+        // 데이터 저장
+        await saveData(data);
+        
+        // UI 업데이트
+        await updatePlansList();
+        await updateRanking();
+        
+        console.log('운동계획이 삭제되었습니다.');
+        
+    } catch (error) {
+        console.error('계획 삭제 중 오류:', error);
+        alert('계획 삭제 중 오류가 발생했습니다.');
+    }
 }
 
 // 운동 완료 토글
@@ -532,12 +608,8 @@ async function showPlanCalendar(plan) {
 
 // 캘린더 업데이트
 async function updateCalendar() {
-    console.log('updateCalendar 호출됨');
-    
     const calendarTitle = document.getElementById('calendar-title');
     const calendarGrid = document.getElementById('calendar-grid');
-    
-    console.log('캘린더 DOM 요소:', { calendarTitle, calendarGrid });
     
     if (!calendarTitle || !calendarGrid) {
         console.error('캘린더 DOM 요소를 찾을 수 없습니다!');
@@ -547,18 +619,13 @@ async function updateCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
-    console.log('캘린더 날짜:', { year, month });
-    
     calendarTitle.textContent = `${year}년 ${month + 1}월`;
     
     // 캘린더 그리드 생성
-    const gridHtml = await createCalendarGrid(year, month);
-    console.log('생성된 캘린더 HTML 길이:', gridHtml.length);
-    calendarGrid.innerHTML = gridHtml;
+    calendarGrid.innerHTML = await createCalendarGrid(year, month);
     
     // 캘린더 일자 클릭 이벤트 리스너 추가
     const calendarDays = calendarGrid.querySelectorAll('.calendar-day:not(.empty)');
-    console.log('캘린더 날짜 개수:', calendarDays.length);
     calendarDays.forEach(day => {
         day.addEventListener('click', async function() {
             const dateStr = this.dataset.date;
@@ -581,12 +648,8 @@ async function navigateMonth(direction) {
 
 // 캘린더 그리드 생성
 async function createCalendarGrid(year, month) {
-    console.log('createCalendarGrid 호출됨:', { year, month });
-    
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    console.log('캘린더 정보:', { firstDay, daysInMonth });
     
     let html = `
         <style>
@@ -652,26 +715,42 @@ async function createCalendarGrid(year, month) {
 
 // 특정 날짜에 완료된 운동이 있는지 확인
 async function isDateCompleted(dateStr) {
-    const data = await loadData();
-    const profileData = data.profiles[currentProfile];
-    
-    if (!profileData || !profileData.exercisePlans) return false;
-    
-    return profileData.exercisePlans.some(plan => {
-        return plan.completed_dates && plan.completed_dates.includes(dateStr);
-    });
+    try {
+        if (!currentProfile) return false;
+        
+        const data = await loadData();
+        if (!data || !data.profiles) return false;
+        
+        const profileData = data.profiles[currentProfile];
+        if (!profileData || !profileData.exercisePlans) return false;
+        
+        return profileData.exercisePlans.some(plan => {
+            return plan.completed_dates && plan.completed_dates.includes(dateStr);
+        });
+    } catch (error) {
+        console.error('isDateCompleted 에러:', error);
+        return false;
+    }
 }
 
 // 특정 날짜에 운동 계획이 있는지 확인
 async function hasExerciseOnDate(dateStr) {
-    const data = await loadData();
-    const profileData = data.profiles[currentProfile];
-    
-    if (!profileData || !profileData.exercisePlans) return false;
-    
-    return profileData.exercisePlans.some(plan => {
-        return dateStr >= plan.start_date && dateStr <= plan.end_date;
-    });
+    try {
+        if (!currentProfile) return false;
+        
+        const data = await loadData();
+        if (!data || !data.profiles) return false;
+        
+        const profileData = data.profiles[currentProfile];
+        if (!profileData || !profileData.exercisePlans) return false;
+        
+        return profileData.exercisePlans.some(plan => {
+            return dateStr >= plan.start_date && dateStr <= plan.end_date;
+        });
+    } catch (error) {
+        console.error('hasExerciseOnDate 에러:', error);
+        return false;
+    }
 }
 
 // 날짜 완료 토글
@@ -722,6 +801,12 @@ async function toggleDateCompletion(dateStr) {
 
 // 랭킹 업데이트
 async function updateRanking() {
+    // 월별 랭킹 초기화 확인
+    const isNewMonth = checkMonthlyReset();
+    if (isNewMonth) {
+        console.log('새로운 월이 시작되었습니다. 랭킹이 초기화됩니다.');
+    }
+    
     const data = await loadData();
     const rankings = [];
     
@@ -742,33 +827,51 @@ async function updateRanking() {
     const rankingList = document.getElementById('ranking-list');
     rankingList.innerHTML = '';
     
+    // 실제 등수 계산 (같은 점수면 같은 등수)
+    let currentRank = 1;
+    let previousScore = null;
+    
     rankings.forEach((item, index) => {
         const rankingItem = document.createElement('div');
         rankingItem.className = 'ranking-item';
         
-        // 순위 표시 (1위, 2위, 3위, 4위)
-        const rankNumber = index + 1;
+        // 같은 점수가 아니면 등수 업데이트
+        if (previousScore !== null && item.score !== previousScore) {
+            currentRank = index + 1;
+        }
+        previousScore = item.score;
+        
+        const rankNumber = currentRank;
         const imgSrc = getProfileImageSrc(item.name);
         
-        // 순위에 따른 배경색
+        // 실제 등수에 따른 배경색과 테두리색 (1위는 여러 명일 수 있음)
         let bgColor = '#f8f9fa';
-        if (index === 0) bgColor = '#fff3cd'; // 1위 - 골드
-        else if (index === 1) bgColor = '#e2e3e5'; // 2위 - 실버
-        else if (index === 2) bgColor = '#f8d7da'; // 3위 - 브론즈
+        let borderColor = '#4CAF50'; // 기본색
+        
+        if (currentRank === 1) {
+            bgColor = '#fff3cd'; // 1위 - 골드
+            borderColor = '#FFD700';
+        } else if (currentRank === 2) {
+            bgColor = '#e2e3e5'; // 2위 - 실버
+            borderColor = '#C0C0C0';
+        } else if (currentRank === 3) {
+            bgColor = '#f8d7da'; // 3위 - 브론즈
+            borderColor = '#CD7F32';
+        }
         
         rankingItem.innerHTML = `
             <div class="rank-profile-container" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
                 <div class="rank-image-wrapper" style="position: relative; margin-bottom: 8px;">
                     <img src="${imgSrc}" alt="${item.name}" 
-                         style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid ${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#4CAF50'}; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                         style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid ${borderColor}; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                    <div style="display: none; width: 60px; height: 60px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 1.5rem; border: 3px solid ${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#4CAF50'};">
+                    <div style="display: none; width: 60px; height: 60px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 1.5rem; border: 3px solid ${borderColor};">
                         ${item.name === '아빠' ? '👨' : item.name === '엄마' ? '👩' : item.name === '주환' ? '👦' : '🧒'}
                     </div>
-                    <div class="rank-badge" style="position: absolute; top: -5px; left: -5px; width: 25px; height: 25px; background: ${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#4CAF50'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: white; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    <div class="rank-badge" style="position: absolute; top: -5px; left: -5px; width: 25px; height: 25px; background: ${borderColor}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: white; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
                         ${rankNumber}
                     </div>
-                    <div class="grade-badge" style="position: absolute; top: -8px; right: -8px; background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; font-weight: bold; border: 1px solid white;">
+                    <div class="grade-badge" style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; font-weight: bold; border: 1px solid white;">
                         ${item.grade.split(' ')[0]}
                     </div>
                 </div>
@@ -805,17 +908,61 @@ async function updateProfileCards() {
     }
 }
 
-// 프로필 점수 계산
+// 프로필 점수 계산 (운동 완료 점수 + 계획 추가 점수)
 function calculateProfileScore(profileName, profileData) {
     if (!profileData || !profileData.exercisePlans) return 0;
     
-    let totalScore = 0;
+    // 기존 운동 완료 점수 계산
+    let completionScore = 0;
     profileData.exercisePlans.forEach(plan => {
         const completedDays = plan.completed_dates ? plan.completed_dates.length : 0;
-        totalScore += completedDays * getExerciseScore(plan.exercise_type);
+        completionScore += completedDays * getExerciseScore(plan.exercise_type);
     });
     
-    return totalScore;
+    // 현재 월의 운동계획 추가 점수 (1개당 1점)
+    const currentMonth = getCurrentMonthKey();
+    const monthlyData = getMonthlyData(profileData, currentMonth);
+    const planScore = monthlyData.exercisePlans ? monthlyData.exercisePlans.length : 0;
+    
+    // 총 점수 = 완료 점수 + 계획 점수
+    return completionScore + planScore;
+}
+
+// 현재 월 키 생성 (예: "2025-01")
+function getCurrentMonthKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// 월별 데이터 가져오기/생성
+function getMonthlyData(profileData, monthKey) {
+    if (!profileData.monthlyData) {
+        profileData.monthlyData = {};
+    }
+    
+    if (!profileData.monthlyData[monthKey]) {
+        profileData.monthlyData[monthKey] = {
+            exercisePlans: [],
+            score: 0,
+            completedCount: 0
+        };
+    }
+    
+    return profileData.monthlyData[monthKey];
+}
+
+// 월별 랭킹 초기화 확인
+function checkMonthlyReset() {
+    const currentMonth = getCurrentMonthKey();
+    const lastResetMonth = localStorage.getItem('lastResetMonth');
+    
+    if (lastResetMonth !== currentMonth) {
+        console.log(`새로운 월 감지: ${currentMonth}, 랭킹 초기화`);
+        localStorage.setItem('lastResetMonth', currentMonth);
+        return true; // 새로운 월
+    }
+    
+    return false; // 동일한 월
 }
 
 // 운동 종류별 점수
@@ -1262,13 +1409,13 @@ function showAppInfo() {
             
             <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수 시스템:</h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="margin-bottom: 8px;"><strong>🏃‍♂️ 달리기:</strong> 15점/일</div>
-                <div style="margin-bottom: 8px;"><strong>🏊‍♂️ 수영:</strong> 20점/일</div>
-                <div style="margin-bottom: 8px;"><strong>🏋️‍♂️ 기구운동:</strong> 18점/일</div>
-                <div style="margin-bottom: 8px;"><strong>🚴‍♂️ 자전거:</strong> 12점/일</div>
-                <div style="margin-bottom: 8px;"><strong>🧘‍♀️ 요가:</strong> 10점/일</div>
-                <div style="margin-bottom: 8px;"><strong>🚶‍♂️ 걷기:</strong> 8점/일</div>
-                <div><strong>🏃‍♂️ 러닝머신:</strong> 15점/일</div>
+                <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수:</strong></div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏃‍♂️ 달리기: 15점/일 | 🏊‍♂️ 수영: 20점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏋️‍♂️ 기구운동: 18점/일 | 🚴‍♂️ 자전거: 12점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 12px;">🧘‍♀️ 요가: 10점/일 | 🚶‍♂️ 걷기: 8점/일</div>
+                <div style="margin-bottom: 8px;"><strong>✅ 계획 추가 보너스:</strong> 1점 (완료 안해도 됨)</div>
+                <div style="margin-bottom: 8px;"><strong>❌ 계획 삭제:</strong> -1점</div>
+                <div><strong>📊 총점:</strong> 운동 완료 점수 + 계획 보너스 점수</div>
             </div>
             
             <h3 style="color: #ff9800; margin: 20px 0 10px;">🏰 중세 계급 시스템:</h3>
