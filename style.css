@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #ffffff;
     color: #333;
     overflow-x: hidden;
 }
@@ -31,7 +31,8 @@ body {
 
 /* 로딩 화면 */
 #loading-screen {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #e2e8f0;
 }
 
 #loading-screen.active {
@@ -42,7 +43,7 @@ body {
 
 .loading-container {
     text-align: center;
-    color: white;
+    color: #374151;
 }
 
 .loading-icon {
@@ -50,23 +51,24 @@ body {
     height: 200px;
     border-radius: 20px;
     margin-bottom: 30px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
     object-fit: cover;
-    border: 4px solid rgba(255,255,255,0.3);
+    border: 4px solid #6366f1;
 }
 
 .loading-title {
     font-size: 2rem;
     font-weight: bold;
     margin-bottom: 20px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    text-shadow: none;
+    color: #4f46e5;
 }
 
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid rgba(255,255,255,0.3);
-    border-top: 4px solid white;
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid #4f46e5;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 20px auto;
@@ -100,16 +102,18 @@ body {
 
 /* 가족 랭킹 */
 .family-ranking {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border-radius: 10px;
-    padding: 15px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+    border-radius: 15px;
+    padding: 20px;
     margin-top: 15px;
+    border: 1px solid #e2e8f0;
 }
 
 .family-ranking h3 {
     text-align: center;
-    margin-bottom: 10px;
-    color: #8b4513;
+    margin-bottom: 15px;
+    color: #4a5568;
+    font-weight: 600;
 }
 
 .ranking-list {
@@ -118,7 +122,7 @@ body {
     align-items: flex-start;
     gap: 15px;
     padding: 15px 5px;
-    background: rgba(255,255,255,0.1);
+    background: rgba(56, 178, 172, 0.08);
     border-radius: 15px;
     margin: 10px 0;
 }
@@ -171,10 +175,84 @@ body {
     }
 }
 
+/* 프로필 선택 가이드 */
+.profile-select-guide {
+    margin: 30px auto 25px auto;
+    text-align: center;
+    max-width: 600px;
+}
+
+.guide-content {
+    position: relative;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #f59e0b 100%);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15);
+    border: 2px solid rgba(245, 158, 11, 0.2);
+    animation: gentlePulse 3s ease-in-out infinite;
+}
+
+.guide-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 8px;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.guide-text {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #92400e;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(146, 64, 14, 0.1);
+}
+
+.guide-decoration {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 5px;
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+    border-radius: 3px;
+}
+
+.guide-decoration::before,
+.guide-decoration::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 8px;
+    height: 5px;
+    background: #f59e0b;
+    border-radius: 3px;
+}
+
+.guide-decoration::before {
+    left: -12px;
+}
+
+.guide-decoration::after {
+    right: -12px;
+}
+
+@keyframes gentlePulse {
+    0%, 100% { box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15); }
+    50% { box-shadow: 0 8px 35px rgba(245, 158, 11, 0.25); }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-8px); }
+    60% { transform: translateY(-4px); }
+}
+
 /* 프로필 그리드 */
 .profile-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr);
     gap: 15px;
     margin-bottom: 20px;
     max-width: 600px;
@@ -262,24 +340,7 @@ body {
     font-weight: bold;
 }
 
-.set-default-btn {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: opacity 0.3s ease;
-}
 
-.set-default-btn:hover {
-    opacity: 0.9;
-}
-
-.set-default-btn.active {
-    background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
-}
 
 /* 하단 액션 버튼 */
 .bottom-actions {
@@ -333,10 +394,10 @@ body {
 }
 
 .back-btn {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
     color: white;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+    border: 2px solid rgba(255,255,255,0.9);
     position: relative;
     overflow: hidden;
 }
@@ -443,7 +504,7 @@ body {
 }
 
 .tab-btn.active {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
     color: white;
 }
 
@@ -464,13 +525,14 @@ body {
 }
 
 .plans-header h3 {
-    color: white;
+    color: #374151;
     font-size: 1.3rem;
+    font-weight: 600;
 }
 
 .add-plan-btn {
-    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    color: #4a5568;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
     border: none;
     border-radius: 8px;
     padding: 10px 15px;
@@ -540,8 +602,9 @@ body {
 }
 
 .calendar-header h3 {
-    color: white;
+    color: #374151;
     font-size: 1.3rem;
+    font-weight: 600;
 }
 
 .calendar-nav {
@@ -684,21 +747,42 @@ body {
         padding: 20px;
         margin: 10px;
     }
+    
+    .profile-select-guide {
+        margin: 20px auto 20px auto;
+    }
+    
+    .guide-content {
+        padding: 15px;
+    }
+    
+    .guide-text {
+        font-size: 1.1rem;
+    }
 }
 
-@media (max-width: 400px) {
+/* 아주 작은 화면에서도 2x2 유지 */
+@media (max-width: 320px) {
     .profile-grid {
-        grid-template-columns: 1fr;
-        max-width: 300px;
+        gap: 8px;
+        max-width: 280px;
+    }
+    
+    .profile-card {
+        padding: 12px;
+        font-size: 0.9rem;
     }
     
     .bottom-actions {
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        justify-content: center;
+        gap: 10px;
     }
     
     .info-btn, .exit-btn {
-        width: 100%;
-        max-width: 200px;
+        flex: 1;
+        max-width: 150px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
     }
 }
