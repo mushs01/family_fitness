@@ -1945,7 +1945,7 @@ function showAppInfo() {
             
             <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수는 어떻게 받아? </h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수:</strong></div>
+                <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수</strong></div>
                 <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝: 15점  🏃‍♀️ 러닝머신: 15점</div>
                 <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영: 20점  🏋️ 기구운동: 18점</div>
                 <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거: 12점  🧘 요가: 10점</div>
@@ -1966,9 +1966,9 @@ function showAppInfo() {
             
             <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 이런것도 되요! </h3>
             <div style="text-align: left; background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="margin-bottom: 8px;">✅ <strong>실시간 동기화:</strong> 운동 완료시 즉시 공유</div>
-                <div style="margin-bottom: 8px;">✅ <strong>클라우드 백업:</strong> 데이터 분실 걱정 없음</div>
-                <div>✅ <strong>오프라인 지원:</strong> 인터넷 없어도 기록 가능</div>
+                <div style="margin-bottom: 8px;">✅ <strong>실시간 동기화 </strong> 운동 완료시 즉시 공유</div>
+                <div style="margin-bottom: 8px;">✅ <strong>클라우드 백업 </strong> 데이터 분실 걱정 없음</div>
+                <div>✅ <strong>오프라인 지원 </strong> 인터넷 없어도 기록 가능</div>
             </div>
             
             <p style="color: #666; font-style: italic; margin-bottom: 20px;">Made with ❤️ for Family Fitness<br/>
