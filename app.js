@@ -707,15 +707,6 @@ async function savePlan() {
             alert('시작 날짜는 종료 날짜보다 빨라야 합니다.');
             return;
         }
-
-        // ✅ 기존 선언된 data 사용 (중복 선언 제거)
-        const today = new Date().toISOString().split('T')[0];
-        const data = await loadData(); // 이미 선언되어 있다면 const 빼고 await만 남김
-        const profileData = data.profiles[currentProfile] || { exercisePlans: [] };
-
-        const todayCount = profileData.exercisePlans.filter(plan => {
-            return plan.start_date === today;
-        }).length;
         
         const plan = {
             id: Date.now(),
@@ -788,7 +779,7 @@ async function updatePlansList() {
     
     if (profileData.exercisePlans.length === 0) {
         plansList.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: 40px; color: black; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <div class="empty-state" style="text-align: center; padding: 40px; color: white; background: rgba(255,255,255,0.1); border-radius: 10px;">
                 <p style="font-size: 1.2rem; margin-bottom: 10px;">아직 운동 계획이 없습니다.</p>
                 <p style="font-size: 1rem;">새 계획을 추가해보세요! 💪</p>
             </div>
@@ -807,7 +798,7 @@ async function updatePlansList() {
     // 필터링된 계획이 없는 경우
     if (activePlans.length === 0) {
         plansList.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: 40px; color: black; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <div class="empty-state" style="text-align: center; padding: 40px; color: white; background: rgba(255,255,255,0.1); border-radius: 10px;">
                 <p style="font-size: 1.2rem; margin-bottom: 10px;">현재 진행 중인 운동 계획이 없습니다.</p>
                 <p style="font-size: 1rem;">새 계획을 추가해보세요! 💪</p>
             </div>
@@ -828,14 +819,7 @@ async function updatePlansList() {
     }
     
     // 현재 및 미래 계획들만 표시
-    // activePlans.forEach(plan => {
-    //    const planElement = createPlanElement(plan);
-    //    plansList.appendChild(planElement);
-    //});
-    // 현재 및 미래 계획들만 표시 (정렬 포함)
-    activePlans
-    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date)) // ⬅️ 정렬
-    .forEach(plan => {
+    activePlans.forEach(plan => {
         const planElement = createPlanElement(plan);
         plansList.appendChild(planElement);
     });
@@ -1947,11 +1931,12 @@ function showAppInfo() {
     
     modal.innerHTML = `
         <div style="background: white; border-radius: 15px; padding: 20px; max-width: 500px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: center;">
-            <h2 style="color: #4a5568; margin-bottom: 20px;">🔥 우리가족 운동관리 앱 🔥</h2>
-            <p style="margin-bottom: 15px; line-height: 1.6;">🏃‍♂️ 모두의 운동을 관리할 수 있어요 </p>
-            <p style="margin-bottom: 15px; line-height: 1.6;">📊 운동하고 점수를 획득하고 랭킹을 확인하세요 </p>
+            <h2 style="color: #4a5568; margin-bottom: 20px;">🔥 우리가족 운동관리 웹앱 v2.0</h2>
+            <p style="margin-bottom: 15px; line-height: 1.6;">🏃‍♂️ 가족 모두의 운동을 체계적으로 관리하세요!</p>
+            <p style="margin-bottom: 15px; line-height: 1.6;">📊 운동 기록을 통해 점수를 획득하고 랭킹을 확인하세요!</p>
+            <p style="margin-bottom: 20px; line-height: 1.6;">🔥 Firebase 실시간 공유로 가족과 함께하세요!</p>
             
-            <h3 style="color: #4a5568; margin: 20px 0 10px;">💡 어떻게 사용해? </h3>
+            <h3 style="color: #4a5568; margin: 20px 0 10px;">💡 사용법:</h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div style="margin-bottom: 8px;"><strong>1.</strong> 프로필을 선택하세요</div>
                 <div style="margin-bottom: 8px;"><strong>2.</strong> 운동 계획을 추가하세요</div>
@@ -1959,35 +1944,39 @@ function showAppInfo() {
                 <div><strong>4.</strong> 점수를 획득하고 가족 랭킹을 확인하세요</div>
             </div>
             
-            <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수는 어떻게 받아? </h3>
+            <h3 style="color: #2196f3; margin: 20px 0 10px;">🏆 점수 시스템:</h3>
             <div style="text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수</strong></div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝 15점   🏃‍♀️ 러닝머신 15점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영 20점   🏋️ 기구운동 18점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거 12점   🧘 요가 10점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구 15점   ⚽ 축구 15점</div>
-                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기 8점   🏃‍♂️ 기타 5점</div>
-                <div style="margin-bottom: 8px;"><strong>✅ 계획 등록만 해도 </strong> 1점 </div>
+                <div style="margin-bottom: 12px;"><strong>🎯 운동 완료 점수:</strong></div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝: 15점/일 | 🏃‍♀️ 러닝머신: 15점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영: 20점/일 | 🏋️ 기구운동: 18점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거: 12점/일 | 🧘 요가: 10점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구: 15점/일 | ⚽ 축구: 15점/일</div>
+                <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기: 8점/일 | 🏃‍♂️ 기타: 5점/일</div>
+                <div style="margin-bottom: 8px;"><strong>✅ 계획 추가 보너스:</strong> 1점 (완료 안해도 됨)</div>
+                <div style="margin-bottom: 8px;"><strong>❌ 계획 삭제:</strong> -1점</div>
+                <div><strong>📊 총점:</strong> 운동 완료 점수 + 계획 보너스 점수</div>
             </div>
             
-            <h3 style="color: #ff9800; margin: 20px 0 10px;">🏰 계급은 또 뭐야? </h3>
+            <h3 style="color: #ff9800; margin: 20px 0 10px;">🏰 중세 계급 시스템:</h3>
             <div style="text-align: left; background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <div style="margin-bottom: 8px;"><strong>✨ 신 </strong> 400점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>👑 왕 </strong> 300점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>🛡️ 백작 </strong> 200점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>🏇 기사 </strong> 120점 이상</div>
-                <div style="margin-bottom: 8px;"><strong>🌾 농민 </strong> 50점 이상</div>
-                <div><strong>⛓️ 노예 </strong> 50점 미만ㅠㅠ</div>
+                <div style="margin-bottom: 8px;"><strong>✨ 신:</strong> 400점 이상</div>
+                <div style="margin-bottom: 8px;"><strong>👑 왕:</strong> 300-399점</div>
+                <div style="margin-bottom: 8px;"><strong>🛡️ 백작:</strong> 200-299점</div>
+                <div style="margin-bottom: 8px;"><strong>🏇 기사:</strong> 120-199점</div>
+                <div style="margin-bottom: 8px;"><strong>🌾 농민:</strong> 50-119점</div>
+                <div><strong>⛓️ 노예:</strong> 0-49점</div>
             </div>
             
-            <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 이런것도 되요! </h3>
+            <h3 style="color: #4caf50; margin: 20px 0 10px;">🔥 실시간 공유:</h3>
             <div style="text-align: left; background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="margin-bottom: 8px;">✅ <strong>실시간 동기화 </strong> 운동 완료시 즉시 공유</div>
-                <div style="margin-bottom: 8px;">✅ <strong>클라우드 백업 </strong> 데이터 분실 걱정 없음</div>
-                <div>✅ <strong>오프라인 지원 </strong> 인터넷 없어도 기록 가능</div>
+                <div style="margin-bottom: 8px;">✅ <strong>자동 가족 그룹:</strong> OUR_FAMILY_2024</div>
+                <div style="margin-bottom: 8px;">✅ <strong>실시간 동기화:</strong> 운동 완료시 즉시 공유</div>
+                <div style="margin-bottom: 8px;">✅ <strong>클라우드 백업:</strong> 데이터 분실 걱정 없음</div>
+                <div>✅ <strong>오프라인 지원:</strong> 인터넷 없어도 기록 가능</div>
             </div>
             
             <p style="color: #666; font-style: italic; margin-bottom: 20px;">Made with ❤️ for Family Fitness<br/>
+            <small>v2.0 - Firebase 실시간 공유 + 완벽한 점수 시스템</small></p>
             <button onclick="this.closest('div').parentElement.remove()" 
                     style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); 
                            color: white; border: none; border-radius: 8px; 
