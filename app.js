@@ -455,22 +455,7 @@ function setupEventListeners() {
         savePlan();
     }
     
-    // 정렬 드롭다운 이벤트 리스너
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect) {
-        // 저장된 정렬 옵션 복원
-        const savedSort = localStorage.getItem('plans-sort-preference');
-        if (savedSort) {
-            sortSelect.value = savedSort;
-        }
-        
-        sortSelect.addEventListener('change', async function() {
-            const sortBy = this.value;
-            // 정렬 선택사항 저장
-            localStorage.setItem('plans-sort-preference', sortBy);
-            await updatePlansList(sortBy);
-        });
-    }
+    // 정렬 관련 설정 제거됨 - 최신순으로 고정
     
     // 캘린더 네비게이션 (단일 이벤트 리스너)
     document.querySelectorAll('.calendar-nav').forEach(btn => {
@@ -659,14 +644,7 @@ async function selectProfile(profileName) {
     // 계획 목록 업데이트
     await updatePlansList();
     
-    // 정렬 드롭다운 초기화 (저장된 설정 적용)
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect) {
-        const savedSort = localStorage.getItem('plans-sort-preference');
-        if (savedSort) {
-            sortSelect.value = savedSort;
-        }
-    }
+    // 정렬 드롭다운 제거됨 - 최신순으로 고정
     
     // 캘린더 초기화 (첫 방문 시에도 제대로 표시되도록)
     currentDate = new Date();
@@ -853,12 +831,8 @@ async function savePlan() {
     }
 }
 
-// 계획 목록 업데이트
-async function updatePlansList(sortBy = null) {
-    // sortBy가 제공되지 않으면 저장된 설정이나 기본값 사용
-    if (!sortBy) {
-        sortBy = localStorage.getItem('plans-sort-preference') || 'start-date-asc';
-    }
+// 계획 목록 업데이트 (최신순 고정)
+async function updatePlansList() {
     const data = await loadData();
     const profileData = data.profiles[currentProfile] || { exercisePlans: [] };
     const plansList = document.getElementById('plans-list');
@@ -912,82 +886,17 @@ async function updatePlansList(sortBy = null) {
         plansCount.textContent = `${activePlans.length}개 계획`;
     }
     
-    // 정렬 드롭다운 값 동기화
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect && sortSelect.value !== sortBy) {
-        sortSelect.value = sortBy;
-    }
+    // 최신순으로 정렬 (생성일 기준 내림차순)
+    activePlans.sort((a, b) => (b.id || 0) - (a.id || 0));
     
     // 정렬된 계획들 표시
-    const sortedPlans = sortPlans(activePlans, sortBy);
-    sortedPlans.forEach(plan => {
+    activePlans.forEach(plan => {
         const planElement = createPlanElement(plan);
         plansList.appendChild(planElement);
     });
 }
 
-// 계획 정렬 함수
-function sortPlans(plans, sortBy) {
-    const plansCopy = [...plans]; // 원본 배열 보호
-    
-    switch (sortBy) {
-        case 'start-date-asc':
-            return plansCopy.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-            
-        case 'start-date-desc':
-            return plansCopy.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
-            
-        case 'end-date-asc':
-            return plansCopy.sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
-            
-        case 'end-date-desc':
-            return plansCopy.sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
-            
-        case 'created-date-desc':
-            return plansCopy.sort((a, b) => {
-                // created_date가 문자열 형태로 저장되어 있어서 id로 대체 (더 최근 id가 더 큰 숫자)
-                return (b.id || 0) - (a.id || 0);
-            });
-            
-        case 'created-date-asc':
-            return plansCopy.sort((a, b) => {
-                return (a.id || 0) - (b.id || 0);
-            });
-            
-        case 'progress-desc':
-            return plansCopy.sort((a, b) => {
-                const progressA = calculateProgress(a);
-                const progressB = calculateProgress(b);
-                return progressB - progressA;
-            });
-            
-        case 'progress-asc':
-            return plansCopy.sort((a, b) => {
-                const progressA = calculateProgress(a);
-                const progressB = calculateProgress(b);
-                return progressA - progressB;
-            });
-            
-        case 'type':
-            return plansCopy.sort((a, b) => {
-                // 운동 종류별로 정렬하고, 같은 종류면 시작일로 정렬
-                if (a.exercise_type === b.exercise_type) {
-                    return new Date(a.start_date) - new Date(b.start_date);
-                }
-                return a.exercise_type.localeCompare(b.exercise_type, 'ko');
-            });
-            
-        default:
-            return plansCopy.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-    }
-}
-
-// 계획의 진행률 계산 (퍼센트)
-function calculateProgress(plan) {
-    const completedCount = plan.completed_dates ? plan.completed_dates.length : 0;
-    const totalDays = calculateDaysBetween(plan.start_date, plan.end_date) + 1;
-    return totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
-}
+// 정렬 함수들 제거됨 - 최신순으로 고정
 
 // 계획 요소 생성
 function createPlanElement(plan) {
@@ -1229,7 +1138,7 @@ async function updateCalendar() {
         day.addEventListener('click', async function() {
             const dateStr = this.dataset.date;
             if (dateStr) {
-                await toggleDateCompletion(dateStr);
+                await showDateExerciseInfo(dateStr);
             }
         });
     });
@@ -1352,48 +1261,134 @@ async function hasExerciseOnDate(dateStr) {
     }
 }
 
-// 날짜 완료 토글
-async function toggleDateCompletion(dateStr) {
+// 날짜 클릭 시 운동 내용 표시
+async function showDateExerciseInfo(dateStr) {
     const data = await loadData();
     if (!data.profiles[currentProfile]) {
-        data.profiles[currentProfile] = { exercisePlans: [] };
+        showMessage('프로필 데이터가 없습니다.');
+        return;
     }
     
     const profileData = data.profiles[currentProfile];
     if (!profileData.exercisePlans) {
-        profileData.exercisePlans = [];
-    }
-    
-    let dateToggled = false;
-    
-    profileData.exercisePlans.forEach(plan => {
-        // 날짜가 계획 범위 내에 있는지 확인
-        if (dateStr >= plan.start_date && dateStr <= plan.end_date) {
-            if (!plan.completed_dates) plan.completed_dates = [];
-            
-            const dateIndex = plan.completed_dates.indexOf(dateStr);
-            if (dateIndex > -1) {
-                // 완료 취소
-                plan.completed_dates.splice(dateIndex, 1);
-                showMessage(`${dateStr} 운동 완료를 취소했습니다.`);
-            } else {
-                // 완료 체크
-                plan.completed_dates.push(dateStr);
-                showMessage(`${dateStr} 운동을 완료했습니다! 🎉`);
-            }
-            dateToggled = true;
-        }
-    });
-    
-    if (!dateToggled) {
-        showMessage('해당 날짜에 운동 계획이 없습니다.');
+        showMessage('운동 계획이 없습니다.');
         return;
     }
     
-    await saveData(data);
-    await updateCalendar();
-    await updateCurrentProfileInfo();
-    await updateRanking();
+    // 해당 날짜에 해당하는 운동 계획들 찾기
+    const plansForDate = profileData.exercisePlans.filter(plan => {
+        return dateStr >= plan.start_date && dateStr <= plan.end_date;
+    });
+    
+    if (plansForDate.length === 0) {
+        showMessage(`${dateStr}에는 운동 계획이 없습니다.`);
+        return;
+    }
+    
+    // 운동 정보 팝업 생성
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    let plansHtml = '';
+    plansForDate.forEach(plan => {
+        const isCompleted = plan.completed_dates && plan.completed_dates.includes(dateStr);
+        const completedStatus = isCompleted ? '✅ 완료됨' : '⭕ 미완료';
+        const statusColor = isCompleted ? '#4caf50' : '#ff9800';
+        
+        plansHtml += `
+            <div style="background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; border-left: 4px solid ${statusColor};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: bold; color: #333;">${plan.exercise_type}</span>
+                    <span style="color: ${statusColor}; font-size: 0.9rem; font-weight: bold;">${completedStatus}</span>
+                </div>
+                <div style="color: #666; margin-bottom: 8px;">${plan.exercise_content}</div>
+                <div style="font-size: 0.8rem; color: #999;">
+                    기간: ${plan.start_date} ~ ${plan.end_date}
+                </div>
+                <div style="margin-top: 10px; text-align: center;">
+                    <button onclick="toggleExerciseForDate('${plan.id}', '${dateStr}', this.parentElement.parentElement.parentElement.parentElement)" 
+                            style="background: ${isCompleted ? '#f44336' : '#4caf50'}; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                        ${isCompleted ? '완료 취소' : '완료 처리'}
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 15px; padding: 20px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="color: #333; margin: 0 0 5px 0;">📅 ${dateStr}</h3>
+                <p style="color: #666; margin: 0; font-size: 0.9rem;">${plansForDate.length}개 운동 계획</p>
+            </div>
+            ${plansHtml}
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="this.closest('div').parentElement.remove()" 
+                        style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                    닫기
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// 특정 날짜의 운동 완료/취소 토글 (팝업에서 사용)
+async function toggleExerciseForDate(planId, dateStr, modalElement) {
+    try {
+        const data = await loadData();
+        const profileData = data.profiles[currentProfile];
+        const plan = profileData.exercisePlans.find(p => p.id == planId);
+        
+        if (!plan) {
+            alert('운동 계획을 찾을 수 없습니다.');
+            return;
+        }
+        
+        if (!plan.completed_dates) plan.completed_dates = [];
+        
+        const dateIndex = plan.completed_dates.indexOf(dateStr);
+        const exerciseScore = getExerciseScore(plan.exercise_type);
+        
+        if (dateIndex > -1) {
+            // 완료 취소
+            plan.completed_dates.splice(dateIndex, 1);
+            showMessage(`${plan.exercise_type} 완료를 취소했습니다! (-${exerciseScore}점)`);
+        } else {
+            // 완료 처리
+            plan.completed_dates.push(dateStr);
+            showMessage(`${plan.exercise_type} 완료! +${exerciseScore}점 획득! 🎉`);
+        }
+        
+        await saveData(data);
+        
+        // 팝업 닫기 및 UI 업데이트
+        modalElement.remove();
+        await updateCalendar();
+        await updateCurrentProfileInfo();
+        await updateRanking();
+        
+    } catch (error) {
+        console.error('운동 완료 토글 중 오류:', error);
+        alert('처리 중 오류가 발생했습니다.');
+    }
+}
+
+// 전역 함수로 노출
+if (typeof window !== 'undefined') {
+    window.toggleExerciseForDate = toggleExerciseForDate;
 }
 
 
