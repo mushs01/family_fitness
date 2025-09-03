@@ -1598,7 +1598,7 @@ async function updateProfileCards() {
                     trophyIcon = '🏅';
                 }
                 rankBadge.textContent = trophyIcon;
-                rankBadge.style.fontSize = '1.2rem';
+                rankBadge.style.fontSize = '2.4rem';
             }
         }
     }
