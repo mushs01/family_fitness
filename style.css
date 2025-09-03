@@ -192,9 +192,11 @@ body {
     }
     
     .rank-badge {
-        width: 20px !important;
-        height: 20px !important;
-        font-size: 0.7rem !important;
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1.8rem !important;
+        top: -8px !important;
+        left: -8px !important;
     }
     
     .grade-badge {
@@ -268,20 +270,20 @@ body {
 /* 순위 뱃지 (왼쪽 위) */
 .rank-badge {
     position: absolute;
-    top: -8px;
-    left: -8px;
-    width: 32px;
-    height: 32px;
+    top: -12px;
+    left: -12px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    background: rgba(255, 255, 255, 0.95);
     color: #333;
     font-weight: bold;
-    font-size: 16px;
+    font-size: 2.4rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-    border: 3px solid white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 3px solid #ffd700;
     z-index: 10;
 }
 
@@ -414,7 +416,7 @@ body {
     padding: 15px 20px;
 }
 
-.back-btn, .menu-btn {
+.back-btn {
     background: none;
     border: none;
     font-size: 1.2rem;
@@ -485,9 +487,7 @@ body {
     }
 }
 
-.menu-btn:hover {
-    background: rgba(0,0,0,0.1);
-}
+
 
 .profile-info {
     display: flex;
