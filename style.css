@@ -921,17 +921,20 @@ body {
 .ranking-list {
     display: flex;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     margin-top: 15px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
 }
 
 .ranking-item {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 10px;
-    padding: 10px;
+    padding: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    min-width: 80px;
+    min-width: 70px;
+    flex: 1;
+    max-width: 90px;
     text-align: center;
     border: 2px solid transparent;
     transition: all 0.3s ease;
