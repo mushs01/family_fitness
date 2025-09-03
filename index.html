@@ -132,24 +132,9 @@
                     <h3>운동 계획 관리</h3>
                     <button class="add-plan-btn">+ 새 계획 추가</button>
                 </div>
-                <div class="plans-controls">
-                    <div class="sort-controls">
-                        <label for="sort-select">📊 정렬:</label>
-                        <select id="sort-select" class="sort-dropdown">
-                            <option value="start-date-asc">시작일 ↑ (빠른순)</option>
-                            <option value="start-date-desc">시작일 ↓ (늦은순)</option>
-                            <option value="end-date-asc">종료일 ↑ (빠른순)</option>
-                            <option value="end-date-desc">종료일 ↓ (늦은순)</option>
-                            <option value="created-date-desc">생성일 ↓ (최신순)</option>
-                            <option value="created-date-asc">생성일 ↑ (오래된순)</option>
-                            <option value="progress-desc">진행률 ↓ (높은순)</option>
-                            <option value="progress-asc">진행률 ↑ (낮은순)</option>
-                            <option value="type">운동종류별</option>
-                        </select>
-                    </div>
-                    <div class="plans-count-info">
-                        <span id="plans-count">0개 계획</span>
-                    </div>
+                <div class="plans-count-info" style="text-align: center; margin: 15px 0; padding: 8px; background: rgba(79, 172, 254, 0.1); border-radius: 8px;">
+                    <span id="plans-count" style="font-size: 0.9rem; color: #666; font-weight: 500;">0개 계획</span>
+                    <span style="margin-left: 10px; font-size: 0.8rem; color: #888;">(최신순)</span>
                 </div>
                 <div id="plans-list" class="plans-list">
                     <!-- 운동 계획들이 여기 표시됩니다 -->
