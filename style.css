@@ -1055,8 +1055,12 @@ body {
 .ranking-title-container {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
     margin-bottom: 10px;
+}
+
+.family-ranking {
+    position: relative;
 }
 
 .detail-btn {
@@ -1082,6 +1086,13 @@ body {
 
 .detail-btn:active {
     transform: translateY(0);
+}
+
+.detail-btn-left {
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 10;
 }
 
 /* 월별 랭킹 페이지 스타일 */
@@ -1538,6 +1549,11 @@ body {
         width: 28px;
         height: 28px;
         font-size: 0.9rem;
+    }
+    
+    .detail-btn-left {
+        right: 0;
+        top: 0;
     }
     
     /* 차트 모바일 반응형 */
