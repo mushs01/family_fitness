@@ -3729,18 +3729,7 @@ function getRandomItem(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
 
-// 통계 UI 업데이트
-function updateMotivationStats(data) {
-    if (!data) return;
-    
-    const thisWeekElement = document.getElementById('this-week-count');
-    const lastWeekElement = document.getElementById('last-week-count');
-    const thisMonthElement = document.getElementById('this-month-count');
-    
-    if (thisWeekElement) thisWeekElement.textContent = `${data.thisWeek}회`;
-    if (lastWeekElement) lastWeekElement.textContent = `${data.lastWeek}회`;
-    if (thisMonthElement) thisMonthElement.textContent = `${data.thisMonth}회`;
-}
+// 통계 UI 업데이트 함수 제거됨 (메시지만 표시)
 
 // 동기부여 메시지 생성 및 표시
 async function generateMotivationMessage() {
@@ -3759,9 +3748,6 @@ async function generateMotivationMessage() {
         const data = analyzeExerciseData(currentProfile);
         
         if (data) {
-            // 통계 업데이트
-            updateMotivationStats(data);
-            
             // AI 프롬프트 생성
             const prompt = generateMotivationPrompt(data);
             console.log('AI 프롬프트:', prompt);
