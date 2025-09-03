@@ -3729,6 +3729,20 @@ function getRandomItem(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
 
+// AI 상태 표시기와 함께 메시지 업데이트
+function updateMessageWithAIIndicator(messageElement, text) {
+    // AI 상태 표시기 HTML
+    const aiIndicatorHTML = `
+        <div class="ai-status-indicator">
+            <div class="ai-brain-icon">🧠</div>
+            <div class="ai-status-text">AI 자동 생성</div>
+        </div>
+    `;
+    
+    // 메시지와 상태 표시기 함께 설정
+    messageElement.innerHTML = aiIndicatorHTML + text;
+}
+
 // 통계 UI 업데이트 함수 제거됨 (메시지만 표시)
 
 // 동기부여 메시지 생성 및 표시
@@ -3755,8 +3769,8 @@ async function generateMotivationMessage() {
             // AI 메시지 생성
             const aiMessage = await callHuggingFaceAPI(prompt);
             
-            // 메시지 표시
-            messageElement.textContent = aiMessage;
+            // 메시지 표시 (AI 상태 표시기 유지)
+            updateMessageWithAIIndicator(messageElement, aiMessage);
             
             console.log('✅ AI 동기부여 메시지 생성 완료:', aiMessage);
         } else {
@@ -3765,7 +3779,7 @@ async function generateMotivationMessage() {
         
     } catch (error) {
         console.error('❌ 동기부여 메시지 생성 실패:', error);
-        messageElement.textContent = '오늘도 건강한 하루 만들어봐요! 화이팅! 💪';
+        updateMessageWithAIIndicator(messageElement, '오늘도 건강한 하루 만들어봐요! 화이팅! 💪');
     } finally {
         // 로딩 상태 해제
         refreshBtn?.classList.remove('loading');
