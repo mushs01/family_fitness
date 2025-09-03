@@ -38,65 +38,60 @@
         <div class="header">
             <div class="family-ranking">
                 <h3>🏆 이번달 가족랭킹</h3>
-                <div id="ranking-list" class="ranking-list"></div>
             </div>
-        </div>
-
-        <div class="profile-select-guide">
-            <h2 class="guide-text">프로필을 선택해주세요</h2>
         </div>
 
         <div class="profile-grid">
             <div class="profile-card" data-profile="아빠">
+                <div class="rank-badge">1</div>
                 <div class="profile-image-container">
                     <img src="dad.png" alt="아빠" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                     <div class="profile-emoji" style="display:none">👨</div>
                 </div>
+                <div class="grade-badge">⛓️ 노예</div>
                 <h3>아빠</h3>
                 <div class="profile-stats">
-                    <span class="grade">⛓️ 노예</span>
                     <span class="score">0점</span>
                 </div>
-
             </div>
 
             <div class="profile-card" data-profile="엄마">
+                <div class="rank-badge">2</div>
                 <div class="profile-image-container">
                     <img src="mom.png" alt="엄마" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                     <div class="profile-emoji" style="display:none">👩</div>
                 </div>
+                <div class="grade-badge">⛓️ 노예</div>
                 <h3>엄마</h3>
                 <div class="profile-stats">
-                    <span class="grade">⛓️ 노예</span>
                     <span class="score">0점</span>
                 </div>
-
             </div>
 
             <div class="profile-card" data-profile="주환">
+                <div class="rank-badge">3</div>
                 <div class="profile-image-container">
                     <img src="juhwan.png" alt="주환" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                     <div class="profile-emoji" style="display:none">👦</div>
                 </div>
+                <div class="grade-badge">⛓️ 노예</div>
                 <h3>주환</h3>
                 <div class="profile-stats">
-                    <span class="grade">⛓️ 노예</span>
                     <span class="score">0점</span>
                 </div>
-
             </div>
 
             <div class="profile-card" data-profile="태환">
+                <div class="rank-badge">4</div>
                 <div class="profile-image-container">
                     <img src="taehwan.png" alt="태환" class="profile-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                     <div class="profile-emoji" style="display:none">🧒</div>
                 </div>
+                <div class="grade-badge">⛓️ 노예</div>
                 <h3>태환</h3>
                 <div class="profile-stats">
-                    <span class="grade">⛓️ 노예</span>
                     <span class="score">0점</span>
                 </div>
-
             </div>
         </div>
 
@@ -134,6 +129,25 @@
                     <h3>운동 계획 관리</h3>
                     <button class="add-plan-btn">+ 새 계획 추가</button>
                 </div>
+                <div class="plans-controls">
+                    <div class="sort-controls">
+                        <label for="sort-select">📊 정렬:</label>
+                        <select id="sort-select" class="sort-dropdown">
+                            <option value="start-date-asc">시작일 ↑ (빠른순)</option>
+                            <option value="start-date-desc">시작일 ↓ (늦은순)</option>
+                            <option value="end-date-asc">종료일 ↑ (빠른순)</option>
+                            <option value="end-date-desc">종료일 ↓ (늦은순)</option>
+                            <option value="created-date-desc">생성일 ↓ (최신순)</option>
+                            <option value="created-date-asc">생성일 ↑ (오래된순)</option>
+                            <option value="progress-desc">진행률 ↓ (높은순)</option>
+                            <option value="progress-asc">진행률 ↑ (낮은순)</option>
+                            <option value="type">운동종류별</option>
+                        </select>
+                    </div>
+                    <div class="plans-count-info">
+                        <span id="plans-count">0개 계획</span>
+                    </div>
+                </div>
                 <div id="plans-list" class="plans-list">
                     <!-- 운동 계획들이 여기 표시됩니다 -->
                 </div>
@@ -160,7 +174,7 @@
                 <div class="form-group">
                     <label>운동 종류</label>
                     <select id="exercise-type">
-                        <option value="달리기">🏃 달리기</option>
+                        <option value="러닝">🏃 러닝</option>
                         <option value="러닝머신">🏃‍♀️ 러닝머신</option>
                         <option value="걷기">🚶 걷기</option>
                         <option value="자전거">🚴 자전거</option>
@@ -169,7 +183,7 @@
                         <option value="요가">🧘 요가</option>
                         <option value="야구">⚾ 야구</option>
                         <option value="축구">⚽ 축구</option>
-                        <option value="기타">🏡 기타</option>
+                        <option value="기타">🏃‍♂️ 기타</option>
                     </select>
                 </div>
                 <div class="form-group">
