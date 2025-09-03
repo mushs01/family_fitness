@@ -449,33 +449,7 @@ body {
     50% { opacity: 0.7; }
 }
 
-.motivation-stats {
-    display: flex;
-    justify-content: space-around;
-    gap: 10px;
-}
-
-.stat-item {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
-    flex: 1;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.stat-label {
-    display: block;
-    font-size: 0.8rem;
-    opacity: 0.9;
-    margin-bottom: 5px;
-}
-
-.stat-value {
-    display: block;
-    font-size: 1.2rem;
-    font-weight: bold;
-}
+/* 통계 섹션 제거됨 - 메시지만 표시 */
 
 /* 모바일 최적화 */
 @media (max-width: 768px) {
@@ -558,21 +532,7 @@ body {
         min-height: 50px;
     }
     
-    .motivation-stats {
-        gap: 8px;
-    }
-    
-    .stat-item {
-        padding: 10px 8px;
-    }
-    
-    .stat-label {
-        font-size: 0.75rem;
-    }
-    
-    .stat-value {
-        font-size: 1rem;
-    }
+    /* 통계 관련 모바일 스타일 제거됨 */
 }
 
 /* 가족 랭킹 */
