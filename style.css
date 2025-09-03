@@ -145,6 +145,146 @@ body {
     font-size: 1.8rem;
 }
 
+/* 날씨 섹션 */
+.weather-section {
+    margin-bottom: 20px;
+}
+
+.weather-container {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    border-radius: 15px;
+    padding: 20px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 5px 15px rgba(116, 185, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.weather-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: weatherGlow 4s ease-in-out infinite;
+}
+
+@keyframes weatherGlow {
+    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.3; }
+    50% { transform: rotate(10deg) scale(1.1); opacity: 0.1; }
+}
+
+.weather-icon {
+    font-size: 3rem;
+    margin-right: 15px;
+    animation: weatherFloat 3s ease-in-out infinite;
+    z-index: 2;
+    position: relative;
+}
+
+@keyframes weatherFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+}
+
+.weather-info {
+    flex: 1;
+    z-index: 2;
+    position: relative;
+}
+
+.weather-temp {
+    font-size: 2.2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.weather-desc {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-bottom: 3px;
+    text-transform: capitalize;
+}
+
+.weather-location {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+}
+
+.weather-refresh-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 2;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.weather-refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(180deg);
+}
+
+.weather-refresh-btn:active {
+    transform: rotate(180deg) scale(0.95);
+}
+
+.weather-refresh-btn.loading {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+    .weather-container {
+        padding: 15px;
+        margin: 0 -5px 15px -5px;
+    }
+    
+    .weather-icon {
+        font-size: 2.5rem;
+        margin-right: 12px;
+    }
+    
+    .weather-temp {
+        font-size: 1.8rem;
+    }
+    
+    .weather-desc {
+        font-size: 0.9rem;
+    }
+    
+    .weather-location {
+        font-size: 0.75rem;
+    }
+    
+    .weather-refresh-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+}
+
 /* 가족 랭킹 */
 .family-ranking {
     background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
