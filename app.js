@@ -312,6 +312,9 @@ async function initializeApp() {
                             await updateProfileCards();
                             console.log('✅ 프로필 카드 업데이트 완료');
                             
+                            // 날씨 기능 초기화 (모바일)
+                            initWeatherFeature();
+                            
                             console.log('🎉 앱 초기화 완전히 완료! (모바일)');
                         } catch (error) {
                             console.error('❌ 모바일 UI 업데이트 중 오류:', error);
@@ -325,6 +328,9 @@ async function initializeApp() {
                     console.log('👥 프로필 카드 업데이트 시작...');
                     await updateProfileCards();
                     console.log('✅ 프로필 카드 업데이트 완료');
+                    
+                    // 날씨 기능 초기화 (데스크톱)
+                    initWeatherFeature();
                     
                     console.log('🎉 앱 초기화 완전히 완료!');
                 }
@@ -2995,4 +3001,285 @@ function showAppInfo() {
     `;
     
     document.body.appendChild(modal);
+}
+
+// ================================
+// 날씨 기능
+// ================================
+
+// OpenWeatherMap API 키 (무료 계정용)
+const WEATHER_API_KEY = 'YOUR_API_KEY'; // 실제 사용 시 본인의 API 키로 교체하세요
+
+// 날씨 아이콘 매핑
+const weatherIcons = {
+    '01d': '☀️', '01n': '🌙',  // clear sky
+    '02d': '⛅', '02n': '☁️',  // few clouds
+    '03d': '☁️', '03n': '☁️',  // scattered clouds
+    '04d': '☁️', '04n': '☁️',  // broken clouds
+    '09d': '🌧️', '09n': '🌧️', // shower rain
+    '10d': '🌦️', '10n': '🌧️', // rain
+    '11d': '⛈️', '11n': '⛈️',  // thunderstorm
+    '13d': '❄️', '13n': '❄️',  // snow
+    '50d': '🌫️', '50n': '🌫️'  // mist
+};
+
+// 날씨 설명 한국어 매핑
+const weatherDescriptions = {
+    'clear sky': '맑음',
+    'few clouds': '구름 조금',
+    'scattered clouds': '구름 많음',
+    'broken clouds': '흐림',
+    'shower rain': '소나기',
+    'rain': '비',
+    'thunderstorm': '천둥번개',
+    'snow': '눈',
+    'mist': '안개',
+    'overcast clouds': '흐림',
+    'light rain': '가벼운 비',
+    'moderate rain': '보통 비',
+    'heavy intensity rain': '폭우',
+    'very heavy rain': '매우 강한 비',
+    'extreme rain': '극심한 비'
+};
+
+// 현재 위치 가져오기
+function getCurrentLocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('GPS를 지원하지 않는 브라우저입니다.'));
+            return;
+        }
+
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5분간 캐시된 위치 사용
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                });
+            },
+            (error) => {
+                let errorMessage = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = '위치 정보 접근이 거부되었습니다.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = '위치 정보를 사용할 수 없습니다.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = '위치 정보 요청 시간이 초과되었습니다.';
+                        break;
+                    default:
+                        errorMessage = '위치 정보를 가져오는 중 오류가 발생했습니다.';
+                        break;
+                }
+                reject(new Error(errorMessage));
+            },
+            options
+        );
+    });
+}
+
+// 날씨 정보 가져오기 (실제 API 사용 시)
+async function fetchWeatherData(lat, lon) {
+    try {
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric&lang=kr`
+        );
+        
+        if (!response.ok) {
+            throw new Error('날씨 정보를 가져올 수 없습니다.');
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('날씨 API 오류:', error);
+        throw error;
+    }
+}
+
+// 모의 날씨 데이터 (API 키가 없을 때 사용)
+function getMockWeatherData() {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // 시간대별 날씨 시뮬레이션
+    let mockData = {
+        main: { temp: 20, feels_like: 22, humidity: 65 },
+        weather: [{ main: 'Clear', description: 'clear sky', icon: '01d' }],
+        name: '서울특별시',
+        sys: { country: 'KR' },
+        wind: { speed: 2.5 }
+    };
+    
+    // 시간에 따른 온도와 날씨 조정
+    if (hour >= 6 && hour < 12) {
+        // 아침
+        mockData.main.temp = Math.floor(Math.random() * 5) + 15; // 15-19도
+        mockData.weather[0].icon = hour < 9 ? '01d' : '02d';
+        mockData.weather[0].description = hour < 9 ? 'clear sky' : 'few clouds';
+    } else if (hour >= 12 && hour < 18) {
+        // 낮
+        mockData.main.temp = Math.floor(Math.random() * 8) + 20; // 20-27도
+        mockData.weather[0].icon = '01d';
+        mockData.weather[0].description = 'clear sky';
+    } else if (hour >= 18 && hour < 21) {
+        // 저녁
+        mockData.main.temp = Math.floor(Math.random() * 6) + 18; // 18-23도
+        mockData.weather[0].icon = '02d';
+        mockData.weather[0].description = 'few clouds';
+    } else {
+        // 밤
+        mockData.main.temp = Math.floor(Math.random() * 5) + 12; // 12-16도
+        mockData.weather[0].icon = '01n';
+        mockData.weather[0].description = 'clear sky';
+    }
+    
+    return Promise.resolve(mockData);
+}
+
+// 현재 시간 포맷팅
+function getCurrentTimeString() {
+    const now = new Date();
+    const options = { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+    };
+    return now.toLocaleTimeString('ko-KR', options);
+}
+
+// 날씨 정보 업데이트
+async function updateWeatherInfo() {
+    const weatherIcon = document.getElementById('weather-icon');
+    const weatherTemp = document.getElementById('weather-temp');
+    const weatherDesc = document.getElementById('weather-desc');
+    const weatherLocation = document.getElementById('weather-location');
+    const refreshBtn = document.getElementById('weather-refresh');
+    
+    if (!weatherIcon || !weatherTemp || !weatherDesc || !weatherLocation) {
+        console.warn('날씨 UI 요소를 찾을 수 없습니다.');
+        return;
+    }
+
+    try {
+        // 로딩 상태 표시
+        refreshBtn?.classList.add('loading');
+        weatherTemp.textContent = '--°C';
+        weatherDesc.textContent = '날씨 정보 로딩중...';
+        weatherLocation.textContent = '📍 위치 확인중...';
+        
+        let weatherData;
+        let locationName = '';
+        
+        try {
+            // 실제 위치 가져오기 시도
+            const location = await getCurrentLocation();
+            locationName = `📍 ${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)}`;
+            
+            // API 키가 설정되어 있다면 실제 날씨 데이터 사용
+            if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
+                weatherData = await fetchWeatherData(location.latitude, location.longitude);
+                locationName = `📍 ${weatherData.name}`;
+            } else {
+                // API 키가 없다면 모의 데이터 사용
+                weatherData = await getMockWeatherData();
+                locationName = `📍 ${weatherData.name} (데모)`;
+            }
+        } catch (locationError) {
+            console.warn('위치 정보 가져오기 실패:', locationError.message);
+            // 위치 접근 실패 시 기본 위치로 모의 데이터 사용
+            weatherData = await getMockWeatherData();
+            locationName = `📍 서울특별시 (기본)`;
+        }
+        
+        // UI 업데이트
+        const temp = Math.round(weatherData.main.temp);
+        const iconCode = weatherData.weather[0].icon;
+        const description = weatherData.weather[0].description;
+        
+        weatherIcon.textContent = weatherIcons[iconCode] || '🌤️';
+        weatherTemp.textContent = `${temp}°C`;
+        weatherDesc.textContent = weatherDescriptions[description] || description;
+        weatherLocation.textContent = `${locationName} • ${getCurrentTimeString()}`;
+        
+        console.log('✅ 날씨 정보 업데이트 완료:', {
+            temp,
+            description,
+            location: locationName
+        });
+        
+    } catch (error) {
+        console.error('❌ 날씨 정보 업데이트 실패:', error);
+        
+        // 오류 시 기본 표시
+        weatherIcon.textContent = '🌤️';
+        weatherTemp.textContent = '--°C';
+        weatherDesc.textContent = '날씨 정보 오류';
+        weatherLocation.textContent = `📍 정보 없음 • ${getCurrentTimeString()}`;
+    } finally {
+        // 로딩 상태 해제
+        refreshBtn?.classList.remove('loading');
+    }
+}
+
+// 날씨 새로고침 버튼 이벤트
+function initWeatherRefreshButton() {
+    const refreshBtn = document.getElementById('weather-refresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            updateWeatherInfo();
+        });
+    }
+}
+
+// 자동 날씨 업데이트 (10분마다)
+let weatherUpdateInterval;
+
+function startWeatherAutoUpdate() {
+    // 초기 로드
+    updateWeatherInfo();
+    
+    // 10분마다 자동 업데이트
+    if (weatherUpdateInterval) {
+        clearInterval(weatherUpdateInterval);
+    }
+    
+    weatherUpdateInterval = setInterval(() => {
+        updateWeatherInfo();
+        console.log('🔄 날씨 정보 자동 업데이트');
+    }, 10 * 60 * 1000); // 10분
+}
+
+// 페이지 비시블리티 변경 시 날씨 업데이트
+function initWeatherVisibilityHandler() {
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            // 페이지가 다시 보이게 되면 날씨 정보 업데이트
+            updateWeatherInfo();
+        }
+    });
+}
+
+// 날씨 기능 초기화
+function initWeatherFeature() {
+    console.log('🌤️ 날씨 기능 초기화 시작');
+    
+    // 새로고침 버튼 이벤트 등록
+    initWeatherRefreshButton();
+    
+    // 페이지 가시성 변경 이벤트 등록
+    initWeatherVisibilityHandler();
+    
+    // 자동 업데이트 시작
+    startWeatherAutoUpdate();
+    
+    console.log('✅ 날씨 기능 초기화 완료');
 }
