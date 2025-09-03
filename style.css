@@ -441,42 +441,21 @@ body {
     justify-content: center;
 }
 
-/* AI 상태 표시 인디케이터 (헤더에 위치) */
-.ai-status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(0, 255, 0, 0.15);
-    border: 1px solid rgba(0, 255, 0, 0.3);
-    border-radius: 20px;
-    padding: 4px 8px;
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.9);
-    z-index: 3;
+/* AI 로봇 아이콘 애니메이션 */
+.motivation-icon {
+    transition: transform 0.3s ease;
 }
 
-.ai-brain-icon {
-    font-size: 0.8rem;
-    animation: brainPulse 2s ease-in-out infinite;
+.motivation-icon.ai-thinking {
+    animation: robotThinking 1s linear infinite;
 }
 
-@keyframes brainPulse {
-    0%, 100% { 
-        transform: scale(1); 
-        filter: brightness(1);
-    }
-    50% { 
-        transform: scale(1.2); 
-        filter: brightness(1.3);
-    }
+@keyframes robotThinking {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-.ai-status-text {
-    font-weight: 600;
-    font-size: 0.65rem;
-    letter-spacing: 0.5px;
-    opacity: 0.9;
-}
+
 
 .motivation-message.generating {
     animation: messageGlow 1.5s ease-in-out infinite;
@@ -570,19 +549,8 @@ body {
         min-height: 50px;
     }
     
-    .ai-status-indicator {
-        padding: 3px 6px;
-        font-size: 0.6rem;
-        gap: 4px;
-    }
-    
-    .ai-brain-icon {
-        font-size: 0.7rem;
-    }
-    
-    .ai-status-text {
-        font-size: 0.55rem;
-    }
+
+
     
     /* 통계 관련 모바일 스타일 제거됨 */
 }
