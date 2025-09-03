@@ -1491,6 +1491,18 @@ async function updateRanking() {
             borderColor = '#CD7F32';
         }
         
+        // 트로피 아이콘 선택
+        let trophyIcon = '';
+        if (currentRank === 1) {
+            trophyIcon = '🏆'; // 금 트로피
+        } else if (currentRank === 2) {
+            trophyIcon = '🥈'; // 은메달
+        } else if (currentRank === 3) {
+            trophyIcon = '🥉'; // 동메달
+        } else {
+            trophyIcon = '🏅'; // 일반 메달
+        }
+        
         rankingItem.innerHTML = `
             <div class="rank-profile-container" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
                 <div class="rank-image-wrapper" style="position: relative; margin-bottom: 8px;">
@@ -1500,8 +1512,8 @@ async function updateRanking() {
                     <div style="display: none; width: 60px; height: 60px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 1.5rem; border: 3px solid ${borderColor};">
                         ${item.name === '아빠' ? '👨' : item.name === '엄마' ? '👩' : item.name === '주환' ? '👦' : '🧒'}
                     </div>
-                    <div class="rank-badge" style="position: absolute; top: -5px; left: -5px; width: 25px; height: 25px; background: ${borderColor}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; color: white; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                        ${rankNumber}
+                    <div class="rank-badge" style="position: absolute; top: -8px; left: -8px; width: 30px; height: 30px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; border: 2px solid ${borderColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+                        ${trophyIcon}
                     </div>
                     <div class="grade-badge" style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; font-weight: bold; border: 1px solid white;">
                         ${item.grade.split(' ')[0]}
@@ -1573,7 +1585,21 @@ async function updateProfileCards() {
             
             if (gradeElement) gradeElement.textContent = profileData.grade;
             if (scoreElement) scoreElement.textContent = `${profileData.score}점`;
-            if (rankBadge) rankBadge.textContent = rankMap[profileName] || 1;
+            if (rankBadge) {
+                const rank = rankMap[profileName] || 1;
+                let trophyIcon = '';
+                if (rank === 1) {
+                    trophyIcon = '🏆';
+                } else if (rank === 2) {
+                    trophyIcon = '🥈';
+                } else if (rank === 3) {
+                    trophyIcon = '🥉';
+                } else {
+                    trophyIcon = '🏅';
+                }
+                rankBadge.textContent = trophyIcon;
+                rankBadge.style.fontSize = '1.2rem';
+            }
         }
     }
 }
@@ -1880,8 +1906,9 @@ function getExerciseScore(exerciseType) {
         '기구운동': 18,
         '요가': 10,
         '걷기': 8,
-        '야구': 15,
-        '축구': 15,
+        '야구': 10,    // 15점에서 10점으로 변경
+        '축구': 10,    // 15점에서 10점으로 변경
+        '농구': 10,    // 새로 추가
         '기타': 5
     };
     return scores[exerciseType] || 5;
@@ -2482,7 +2509,7 @@ function showAppInfo() {
                 <div style="margin-left: 16px; margin-bottom: 8px;">🏃 러닝 15점 | 🏃‍♀️ 러닝머신 15점</div>
                 <div style="margin-left: 16px; margin-bottom: 8px;">🏊 수영 20점 | 🏋️ 기구운동 18점</div>
                 <div style="margin-left: 16px; margin-bottom: 8px;">🚴 자전거 12점 | 🧘 요가 10점</div>
-                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구 15점 | ⚽ 축구 15점</div>
+                <div style="margin-left: 16px; margin-bottom: 8px;">⚾ 야구 10점 | ⚽ 축구 10점 | 🏀 농구 10점</div>
                 <div style="margin-left: 16px; margin-bottom: 12px;">🚶 걷기 8점 | 🏃‍♂️ 기타 5점</div>
                 <div style="margin-bottom: 8px;"><strong>✅ 계획만 등록해도 </strong> 1점을 받아요 </div>
                 <div><strong>📊 총점:</strong> 운동 완료 점수 + 계획 보너스 점수</div>
