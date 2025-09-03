@@ -2989,7 +2989,9 @@ function showAppInfo() {
             <div style="text-align: left; background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <div style="margin-bottom: 8px;">✅ <strong>실시간 동기화 </strong> 운동 완료시 즉시 공유</div>
                 <div style="margin-bottom: 8px;">✅ <strong>클라우드 백업 </strong> 데이터 분실 걱정 없음</div>
-                <div>✅ <strong>오프라인 지원 </strong> 인터넷 없어도 기록 가능</div>
+                <div style="margin-bottom: 8px;">✅ <strong>오프라인 지원 </strong> 인터넷 없어도 기록 가능</div>
+                <div style="margin-bottom: 8px;">🌤️ <strong>실시간 날씨 정보 </strong> 현재 위치 기반 날씨 표시</div>
+                <div>🤖 <strong>AI 동기부여 코치 </strong> 운동 기록과 날씨를 분석한 맞춤 조언</div>
             </div>
             
             <p style="color: #666; font-style: italic; margin-bottom: 20px;">Made with ❤️ for Family Fitness<br/>
@@ -3493,7 +3495,7 @@ function analyzeExerciseData(profileName) {
 }
 
 // AI 프롬프트 생성
-function generateMotivationPrompt(data) {
+function generateMotivationPrompt(data, weatherData) {
     if (!data) return '';
     
     const { profileName, thisWeek, lastWeek, thisMonth, familyAverage, trend, isAboveAverage } = data;
@@ -3511,7 +3513,32 @@ function generateMotivationPrompt(data) {
         ? `가족 평균(${familyAverage}회)보다 많이 운동하고 있습니다.`
         : `가족 평균(${familyAverage}회)보다 적게 운동하고 있습니다.`;
     
-    return `한국어로 답변해주세요. ${situationContext} ${familyContext} 이번달 총 ${thisMonth}회 운동했습니다. ${profileName}에게 따뜻하고 격려하는 운동 동기부여 메시지를 50자 이내로 생성해주세요.`;
+    // 날씨 상황 추가
+    let weatherContext = '';
+    if (weatherData) {
+        const { temperature, condition, description, humidity, feelsLike } = weatherData;
+        
+        // 날씨별 운동 조언
+        if (condition === 'Rain' || condition === 'Drizzle') {
+            weatherContext = `오늘은 비가 와서(${description}) 실내 운동이 좋겠어요.`;
+        } else if (condition === 'Snow') {
+            weatherContext = `오늘은 눈이 와서(${description}) 실내에서 운동하시길 추천해요.`;
+        } else if (temperature >= 30) {
+            weatherContext = `오늘은 더워서(${temperature}°C, 체감 ${feelsLike}°C) 시원한 시간대나 실내 운동이 좋겠어요.`;
+        } else if (temperature <= 5) {
+            weatherContext = `오늘은 추워서(${temperature}°C, 체감 ${feelsLike}°C) 충분한 준비운동 후 운동하세요.`;
+        } else if (condition === 'Clear') {
+            weatherContext = `오늘은 날씨가 맑아서(${temperature}°C) 야외 운동하기 좋은 날이에요.`;
+        } else {
+            weatherContext = `현재 날씨는 ${description}(${temperature}°C)입니다.`;
+        }
+    }
+    
+    const basePrompt = `한국어로 답변해주세요. ${situationContext} ${familyContext} 이번달 총 ${thisMonth}회 운동했습니다.`;
+    const weatherPrompt = weatherContext ? ` ${weatherContext}` : '';
+    const requestPrompt = ` ${profileName}에게 운동 기록과 현재 날씨를 고려한 따뜻하고 격려하는 동기부여 메시지를 50자 이내로 생성해주세요.`;
+    
+    return basePrompt + weatherPrompt + requestPrompt;
 }
 
 // 스마트 AI 메시지 생성 (자동 생성이 더 품질 좋음)
@@ -3572,7 +3599,7 @@ function generateMockMotivationMessage(prompt) {
     return assembleMotivationMessage(messageComponents, data);
 }
 
-// 프롬프트에서 데이터 추출
+// 프롬프트에서 데이터 추출 (운동 + 날씨)
 function extractDataFromPrompt(prompt) {
     const data = {
         name: '회원',
@@ -3581,7 +3608,12 @@ function extractDataFromPrompt(prompt) {
         thisMonth: 0,
         familyAverage: 0,
         trend: 'same', // increase, decrease, same
-        performance: 'average' // above, below, average
+        performance: 'average', // above, below, average
+        weather: {
+            condition: 'clear',
+            temperature: 20,
+            description: '맑음'
+        }
     };
     
     // 이름 추출
@@ -3610,6 +3642,30 @@ function extractDataFromPrompt(prompt) {
     if (prompt.includes('평균보다 많이')) data.performance = 'above';
     else if (prompt.includes('평균보다 적게')) data.performance = 'below';
     else data.performance = 'average';
+    
+    // 날씨 정보 추출
+    const tempMatch = prompt.match(/(\d+)°C/);
+    if (tempMatch) data.weather.temperature = parseInt(tempMatch[1]);
+    
+    if (prompt.includes('비가 와서') || prompt.includes('비')) {
+        data.weather.condition = 'rain';
+        data.weather.description = '비';
+    } else if (prompt.includes('눈이 와서') || prompt.includes('눈')) {
+        data.weather.condition = 'snow';
+        data.weather.description = '눈';
+    } else if (prompt.includes('더워서') || data.weather.temperature >= 30) {
+        data.weather.condition = 'hot';
+        data.weather.description = '더움';
+    } else if (prompt.includes('추워서') || data.weather.temperature <= 5) {
+        data.weather.condition = 'cold';
+        data.weather.description = '추움';
+    } else if (prompt.includes('맑아서') || prompt.includes('맑음')) {
+        data.weather.condition = 'clear';
+        data.weather.description = '맑음';
+    } else if (prompt.includes('흐림') || prompt.includes('구름')) {
+        data.weather.condition = 'cloudy';
+        data.weather.description = '흐림';
+    }
     
     return data;
 }
@@ -3671,28 +3727,64 @@ function generateMessageComponents(data) {
         ];
     }
     
-    // 행동 제안
+    // 행동 제안 (운동 횟수 + 날씨 고려)
+    let weatherActions = [];
+    
+    // 날씨별 운동 추천
+    if (data.weather.condition === 'rain') {
+        weatherActions = ["실내 요가나 스트레칭 어때요?", "홈트레이닝으로 대체해보세요!", "실내에서 근력운동 해봐요!"];
+    } else if (data.weather.condition === 'snow') {
+        weatherActions = ["따뜻한 실내에서 운동해보세요!", "집에서 하는 요가가 좋겠어요!", "스트레칭으로 몸을 풀어보세요!"];
+    } else if (data.weather.condition === 'hot') {
+        weatherActions = ["시원한 새벽이나 저녁에 운동해보세요!", "에어컨 있는 곳에서 운동하세요!", "수분 보충 잊지 마세요!"];
+    } else if (data.weather.condition === 'cold') {
+        weatherActions = ["충분한 준비운동 후 시작하세요!", "따뜻하게 입고 운동해보세요!", "실내에서 몸을 먼저 풀어보세요!"];
+    } else if (data.weather.condition === 'clear') {
+        weatherActions = ["야외 산책이나 조깅 어때요?", "공원에서 운동하기 좋은 날이에요!", "맑은 하늘 아래 운동해보세요!"];
+    } else {
+        weatherActions = ["오늘도 건강한 운동해보세요!", "컨디션에 맞게 운동하세요!", "무리하지 말고 적당히 해보세요!"];
+    }
+    
+    // 운동 횟수별 기본 추천
+    let exerciseActions = [];
     if (data.thisWeek < 2) {
-        components.action = [
+        exerciseActions = [
             "이번주에 한두 번 더 도전해봐요!", "가벼운 운동부터 시작해보세요!",
             "10분이라도 몸을 움직여봐요!", "스트레칭부터 시작해보는 건 어떨까요?"
         ];
     } else if (data.thisWeek >= 4) {
-        components.action = [
+        exerciseActions = [
             "이 페이스를 계속 유지해봐요!", "정말 훌륭한 습관이에요!",
             "이 기세로 계속 화이팅!", "완벽한 운동 루틴이네요!"
         ];
     } else {
-        components.action = [
+        exerciseActions = [
             "조금씩 더 늘려가봐요!", "꾸준히 계속해보세요!",
             "이 정도면 충분히 좋아요!", "건강한 변화가 느껴질 거예요!"
         ];
     }
     
-    // 이모지
-    components.emoji = [
-        "💪", "🔥", "✨", "🌟", "🏆", "👏", "🚀", "💖", "🌱", "⭐"
-    ];
+    // 날씨 기반 추천과 일반 추천 합치기
+    components.action = [...weatherActions, ...exerciseActions];
+    
+    // 이모지 (날씨 + 기본)
+    let weatherEmojis = [];
+    if (data.weather.condition === 'rain') {
+        weatherEmojis = ["☔", "🌧️", "🏠", "🧘"];
+    } else if (data.weather.condition === 'snow') {
+        weatherEmojis = ["❄️", "⛄", "🏠", "🔥"];
+    } else if (data.weather.condition === 'hot') {
+        weatherEmojis = ["☀️", "🌞", "💧", "🧊"];
+    } else if (data.weather.condition === 'cold') {
+        weatherEmojis = ["🌨️", "🧤", "🔥", "☕"];
+    } else if (data.weather.condition === 'clear') {
+        weatherEmojis = ["🌞", "🌳", "🏃", "🚴"];
+    } else {
+        weatherEmojis = ["🌤️", "⛅"];
+    }
+    
+    const baseEmojis = ["💪", "🔥", "✨", "🌟", "🏆", "👏", "🚀", "💖", "🌱", "⭐"];
+    components.emoji = [...weatherEmojis, ...baseEmojis];
     
     return components;
 }
@@ -3729,6 +3821,48 @@ function getRandomItem(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
 
+// AI용 현재 날씨 데이터 가져오기
+async function getCurrentWeatherForAI() {
+    try {
+        // API 키가 있으면 실제 날씨 데이터 사용
+        if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
+            const position = await getCurrentLocation();
+            const weatherData = await fetchWeatherData(position.latitude, position.longitude);
+            
+            return {
+                temperature: Math.round(weatherData.main.temp),
+                condition: weatherData.weather[0].main,
+                description: weatherData.weather[0].description,
+                humidity: weatherData.main.humidity,
+                feelsLike: Math.round(weatherData.main.feels_like),
+                location: weatherData.name
+            };
+        } else {
+            // Mock 데이터 사용
+            const mockData = getMockWeatherData();
+            return {
+                temperature: Math.round(mockData.main.temp),
+                condition: mockData.weather[0].main,
+                description: mockData.weather[0].description,
+                humidity: mockData.main.humidity,
+                feelsLike: Math.round(mockData.main.feels_like),
+                location: mockData.name
+            };
+        }
+    } catch (error) {
+        console.log('날씨 데이터 가져오기 실패, 기본값 사용:', error);
+        // 에러 시 기본 날씨 데이터
+        return {
+            temperature: 20,
+            condition: 'Clear',
+            description: '맑음',
+            humidity: 60,
+            feelsLike: 22,
+            location: '현재 위치'
+        };
+    }
+}
+
 // 메시지만 업데이트 (상태 표시기는 헤더에 고정)
 function updateMessageWithAIIndicator(messageElement, text) {
     // 단순히 텍스트만 설정 (상태 표시기는 헤더에 있음)
@@ -3741,30 +3875,35 @@ function updateMessageWithAIIndicator(messageElement, text) {
 async function generateMotivationMessage() {
     const messageElement = document.getElementById('motivation-message');
     const refreshBtn = document.getElementById('motivation-refresh');
+    const robotIcon = document.getElementById('ai-robot-icon');
     
     if (!messageElement || !currentProfile) return;
     
     try {
-        // 로딩 상태 표시
+        // 로딩 상태 표시 (로봇 아이콘 회전 시작)
         refreshBtn?.classList.add('loading');
         messageElement.classList.add('generating');
-        messageElement.textContent = 'AI가 맞춤형 메시지를 생성하고 있습니다...';
+        robotIcon?.classList.add('ai-thinking');
+        messageElement.textContent = 'AI가 운동 기록과 날씨 데이터를 분석하여 맞춤형 메시지를 생성하고 있습니다...';
         
         // 운동 데이터 분석
-        const data = analyzeExerciseData(currentProfile);
+        const exerciseData = analyzeExerciseData(currentProfile);
         
-        if (data) {
-            // AI 프롬프트 생성
-            const prompt = generateMotivationPrompt(data);
-            console.log('AI 프롬프트:', prompt);
+        // 현재 날씨 데이터 가져오기
+        const weatherData = await getCurrentWeatherForAI();
+        
+        if (exerciseData) {
+            // AI 프롬프트 생성 (운동 데이터 + 날씨 데이터)
+            const prompt = generateMotivationPrompt(exerciseData, weatherData);
+            console.log('AI 프롬프트 (운동+날씨):', prompt);
             
             // AI 메시지 생성
             const aiMessage = await callHuggingFaceAPI(prompt);
             
-            // 메시지 표시 (AI 상태 표시기 유지)
+            // 메시지 표시
             updateMessageWithAIIndicator(messageElement, aiMessage);
             
-            console.log('✅ AI 동기부여 메시지 생성 완료:', aiMessage);
+            console.log('✅ AI 동기부여 메시지 생성 완료 (운동+날씨):', aiMessage);
         } else {
             messageElement.textContent = '운동 기록을 더 쌓으시면 맞춤형 메시지를 드릴 수 있어요! 💪';
         }
@@ -3773,9 +3912,10 @@ async function generateMotivationMessage() {
         console.error('❌ 동기부여 메시지 생성 실패:', error);
         updateMessageWithAIIndicator(messageElement, '오늘도 건강한 하루 만들어봐요! 화이팅! 💪');
     } finally {
-        // 로딩 상태 해제
+        // 로딩 상태 해제 (로봇 아이콘 회전 정지)
         refreshBtn?.classList.remove('loading');
         messageElement.classList.remove('generating');
+        robotIcon?.classList.remove('ai-thinking');
     }
 }
 
