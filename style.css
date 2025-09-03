@@ -916,3 +916,125 @@ body {
         text-align: center;
     }
 }
+
+/* 랭킹 리스트 스타일 */
+.ranking-list {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.ranking-item {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-width: 80px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.ranking-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.rank-profile-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.rank-image-wrapper {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.rank-image-wrapper img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid;
+}
+
+.rank-badge {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.7rem;
+    color: white;
+    border: 1px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.grade-badge {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-size: 0.5rem;
+    font-weight: bold;
+    border: 1px solid white;
+    white-space: nowrap;
+}
+
+.rank-info {
+    text-align: center;
+}
+
+.rank-info div:first-child {
+    font-weight: bold;
+    font-size: 0.8rem;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.rank-info div:last-child {
+    font-size: 0.7rem;
+    color: #666;
+}
+
+/* 모바일에서 랭킹 리스트 반응형 */
+@media (max-width: 768px) {
+    .ranking-list {
+        gap: 8px;
+        margin-top: 10px;
+    }
+    
+    .ranking-item {
+        min-width: 70px;
+        padding: 8px;
+    }
+    
+    .rank-image-wrapper img {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .rank-badge {
+        width: 18px;
+        height: 18px;
+        font-size: 0.6rem;
+    }
+    
+    .grade-badge {
+        font-size: 0.45rem;
+        padding: 1px 3px;
+    }
+}
