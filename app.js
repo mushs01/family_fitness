@@ -3105,6 +3105,25 @@ async function fetchWeatherData(lat, lon) {
     }
 }
 
+// 2시간 예보 가져오기 (실제 API 사용 시)
+async function fetchHourlyForecast(lat, lon) {
+    try {
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric&lang=kr&cnt=3`
+        );
+        
+        if (!response.ok) {
+            throw new Error('예보 정보를 가져올 수 없습니다.');
+        }
+        
+        const data = await response.json();
+        return data.list.slice(1, 3); // 1시간, 2시간 후 데이터만
+    } catch (error) {
+        console.error('예보 API 오류:', error);
+        throw error;
+    }
+}
+
 // 모의 날씨 데이터 (API 키가 없을 때 사용)
 function getMockWeatherData() {
     const now = new Date();
@@ -3145,6 +3164,42 @@ function getMockWeatherData() {
     return Promise.resolve(mockData);
 }
 
+// 모의 2시간 예보 데이터
+function getMockHourlyForecast() {
+    const now = new Date();
+    const currentTemp = 20; // 기본 온도
+    
+    const forecast = [];
+    for (let i = 1; i <= 2; i++) {
+        const futureHour = new Date(now.getTime() + i * 60 * 60 * 1000);
+        const hour = futureHour.getHours();
+        
+        let temp = currentTemp + Math.floor(Math.random() * 6) - 3; // ±3도 변동
+        let icon = '01d';
+        let description = 'clear sky';
+        
+        // 시간에 따른 날씨 조정
+        if (hour >= 6 && hour < 18) {
+            icon = ['01d', '02d', '03d'][Math.floor(Math.random() * 3)];
+        } else {
+            icon = ['01n', '02n', '03n'][Math.floor(Math.random() * 3)];
+        }
+        
+        if (Math.random() < 0.3) {
+            icon = '10d'; // 30% 확률로 비
+            description = 'rain';
+        }
+        
+        forecast.push({
+            main: { temp },
+            weather: [{ icon, description }],
+            dt_txt: futureHour.toISOString()
+        });
+    }
+    
+    return Promise.resolve(forecast);
+}
+
 // 현재 시간 포맷팅
 function getCurrentTimeString() {
     const now = new Date();
@@ -3154,6 +3209,30 @@ function getCurrentTimeString() {
         hour12: false
     };
     return now.toLocaleTimeString('ko-KR', options);
+}
+
+// 2시간 예보 UI 업데이트
+function updateForecastUI(forecastData) {
+    const forecastItems = document.getElementById('forecast-items');
+    if (!forecastItems || !forecastData) return;
+
+    const items = forecastItems.querySelectorAll('.forecast-item');
+    
+    forecastData.forEach((forecast, index) => {
+        if (index < items.length) {
+            const item = items[index];
+            const temp = Math.round(forecast.main.temp);
+            const iconCode = forecast.weather[0].icon;
+            
+            const timeElement = item.querySelector('.forecast-time');
+            const iconElement = item.querySelector('.forecast-icon');
+            const tempElement = item.querySelector('.forecast-temp');
+            
+            if (timeElement) timeElement.textContent = `${index + 1}시간 후`;
+            if (iconElement) iconElement.textContent = weatherIcons[iconCode] || '🌤️';
+            if (tempElement) tempElement.textContent = `${temp}°C`;
+        }
+    });
 }
 
 // 날씨 정보 업데이트
@@ -3177,30 +3256,35 @@ async function updateWeatherInfo() {
         weatherLocation.textContent = '📍 위치 확인중...';
         
         let weatherData;
+        let forecastData;
         let locationName = '';
+        let location = null;
         
         try {
             // 실제 위치 가져오기 시도
-            const location = await getCurrentLocation();
+            location = await getCurrentLocation();
             locationName = `📍 ${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)}`;
             
             // API 키가 설정되어 있다면 실제 날씨 데이터 사용
             if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
                 weatherData = await fetchWeatherData(location.latitude, location.longitude);
+                forecastData = await fetchHourlyForecast(location.latitude, location.longitude);
                 locationName = `📍 ${weatherData.name}`;
             } else {
                 // API 키가 없다면 모의 데이터 사용
                 weatherData = await getMockWeatherData();
+                forecastData = await getMockHourlyForecast();
                 locationName = `📍 ${weatherData.name} (데모)`;
             }
         } catch (locationError) {
             console.warn('위치 정보 가져오기 실패:', locationError.message);
             // 위치 접근 실패 시 기본 위치로 모의 데이터 사용
             weatherData = await getMockWeatherData();
+            forecastData = await getMockHourlyForecast();
             locationName = `📍 서울특별시 (기본)`;
         }
         
-        // UI 업데이트
+        // 현재 날씨 UI 업데이트
         const temp = Math.round(weatherData.main.temp);
         const iconCode = weatherData.weather[0].icon;
         const description = weatherData.weather[0].description;
@@ -3210,10 +3294,14 @@ async function updateWeatherInfo() {
         weatherDesc.textContent = weatherDescriptions[description] || description;
         weatherLocation.textContent = `${locationName} • ${getCurrentTimeString()}`;
         
+        // 2시간 예보 UI 업데이트
+        updateForecastUI(forecastData);
+        
         console.log('✅ 날씨 정보 업데이트 완료:', {
             temp,
             description,
-            location: locationName
+            location: locationName,
+            forecast: forecastData?.length || 0
         });
         
     } catch (error) {
@@ -3224,6 +3312,21 @@ async function updateWeatherInfo() {
         weatherTemp.textContent = '--°C';
         weatherDesc.textContent = '날씨 정보 오류';
         weatherLocation.textContent = `📍 정보 없음 • ${getCurrentTimeString()}`;
+        
+        // 예보도 기본 표시
+        const forecastItems = document.getElementById('forecast-items');
+        if (forecastItems) {
+            const items = forecastItems.querySelectorAll('.forecast-item');
+            items.forEach((item, index) => {
+                const timeElement = item.querySelector('.forecast-time');
+                const iconElement = item.querySelector('.forecast-icon');
+                const tempElement = item.querySelector('.forecast-temp');
+                
+                if (timeElement) timeElement.textContent = `${index + 1}시간 후`;
+                if (iconElement) iconElement.textContent = '🌤️';
+                if (tempElement) tempElement.textContent = '--°C';
+            });
+        }
     } finally {
         // 로딩 상태 해제
         refreshBtn?.classList.remove('loading');
