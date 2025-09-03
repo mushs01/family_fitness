@@ -36,19 +36,6 @@
     <!-- 프로필 선택 화면 -->
     <div id="profile-screen" class="screen">
         <div class="header">
-            <!-- 날씨 정보 섹션 -->
-            <div class="weather-section">
-                <div class="weather-container">
-                    <div class="weather-icon" id="weather-icon">🌤️</div>
-                    <div class="weather-info">
-                        <div class="weather-temp" id="weather-temp">--°C</div>
-                        <div class="weather-desc" id="weather-desc">날씨 정보 로딩중...</div>
-                        <div class="weather-location" id="weather-location">📍 위치 확인중...</div>
-                    </div>
-                    <button class="weather-refresh-btn" id="weather-refresh" title="날씨 새로고침">🔄</button>
-                </div>
-            </div>
-
             <div class="family-ranking">
                 <div class="ranking-title-container">
                     <h3 id="family-ranking-title">🏆 이번달 가족랭킹</h3>
@@ -68,9 +55,8 @@
                     <div class="profile-emoji" style="display:none">👨</div>
                 </div>
                 <h3>아빠</h3>
-                <div class="profile-stats">
-                    <span class="score">0점</span>
-                    <span class="grade">⛓️ 노예</span>
+                <div class="profile-stats-compact">
+                    <span class="score">0점</span> • <span class="grade">⛓️ 노예</span>
                 </div>
             </div>
 
@@ -81,9 +67,8 @@
                     <div class="profile-emoji" style="display:none">👩</div>
                 </div>
                 <h3>엄마</h3>
-                <div class="profile-stats">
-                    <span class="score">0점</span>
-                    <span class="grade">⛓️ 노예</span>
+                <div class="profile-stats-compact">
+                    <span class="score">0점</span> • <span class="grade">⛓️ 노예</span>
                 </div>
             </div>
 
@@ -94,9 +79,8 @@
                     <div class="profile-emoji" style="display:none">👦</div>
                 </div>
                 <h3>주환</h3>
-                <div class="profile-stats">
-                    <span class="score">0점</span>
-                    <span class="grade">⛓️ 노예</span>
+                <div class="profile-stats-compact">
+                    <span class="score">0점</span> • <span class="grade">⛓️ 노예</span>
                 </div>
             </div>
 
@@ -107,9 +91,40 @@
                     <div class="profile-emoji" style="display:none">🧒</div>
                 </div>
                 <h3>태환</h3>
-                <div class="profile-stats">
-                    <span class="score">0점</span>
-                    <span class="grade">⛓️ 노예</span>
+                <div class="profile-stats-compact">
+                    <span class="score">0점</span> • <span class="grade">⛓️ 노예</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 날씨 정보 섹션 -->
+        <div class="weather-section">
+            <div class="weather-container">
+                <div class="weather-current">
+                    <div class="weather-icon" id="weather-icon">🌤️</div>
+                    <div class="weather-info">
+                        <div class="weather-temp" id="weather-temp">--°C</div>
+                        <div class="weather-desc" id="weather-desc">날씨 정보 로딩중...</div>
+                        <div class="weather-location" id="weather-location">📍 위치 확인중...</div>
+                    </div>
+                    <button class="weather-refresh-btn" id="weather-refresh" title="날씨 새로고침">🔄</button>
+                </div>
+                
+                <!-- 2시간 예보 -->
+                <div class="weather-forecast">
+                    <div class="forecast-title">🔮 앞으로 2시간</div>
+                    <div class="forecast-items" id="forecast-items">
+                        <div class="forecast-item">
+                            <div class="forecast-time">1시간 후</div>
+                            <div class="forecast-icon">🌤️</div>
+                            <div class="forecast-temp">--°C</div>
+                        </div>
+                        <div class="forecast-item">
+                            <div class="forecast-time">2시간 후</div>
+                            <div class="forecast-icon">⛅</div>
+                            <div class="forecast-temp">--°C</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
