@@ -739,10 +739,20 @@ function hideAddPlanPopup() {
 // 계획 저장
 async function savePlan() {
     try {
+        console.log('🔧 savePlan 함수 시작, currentProfile:', currentProfile);
+        
+        // 현재 프로필 검증
+        if (!currentProfile) {
+            alert('프로필이 선택되지 않았습니다. 프로필을 먼저 선택해주세요.');
+            return;
+        }
+        
         const exerciseType = document.getElementById('exercise-type').value;
         const exerciseContent = document.getElementById('exercise-content').value;
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
+        
+        console.log('📝 폼 데이터:', { exerciseType, exerciseContent, startDate, endDate });
         
         // 필수 필드 검증
         if (!exerciseType || !exerciseContent || !startDate || !endDate) {
@@ -769,8 +779,18 @@ async function savePlan() {
         console.log('새 계획 생성:', plan);
         
         // 데이터 저장
+        console.log('📊 데이터 로드 시작...');
         const data = await loadData();
+        console.log('📊 데이터 로드 완료:', data);
+        
+        // 데이터 구조 안전성 검증
+        if (!data || !data.profiles) {
+            console.error('❌ 잘못된 데이터 구조:', data);
+            throw new Error('데이터 구조가 올바르지 않습니다.');
+        }
+        
         if (!data.profiles[currentProfile]) {
+            console.log('🆕 새 프로필 데이터 생성:', currentProfile);
             data.profiles[currentProfile] = { 
                 exercisePlans: [], 
                 monthlyData: {},
@@ -780,18 +800,34 @@ async function savePlan() {
         }
         
         // 기존 exercisePlans에도 저장 (하위 호환성)
+        console.log('📝 기존 exercisePlans에 추가...');
+        if (!Array.isArray(data.profiles[currentProfile].exercisePlans)) {
+            data.profiles[currentProfile].exercisePlans = [];
+        }
         data.profiles[currentProfile].exercisePlans.push(plan);
+        console.log('✅ exercisePlans 추가 완료');
         
         // 현재 월별 데이터에도 저장
         const currentMonth = getCurrentMonthKey();
-        console.log('현재 월:', currentMonth);
-        const monthlyData = getMonthlyData(data.profiles[currentProfile], currentMonth);
-        console.log('월별 데이터:', monthlyData);
-        monthlyData.exercisePlans.push(plan);
-        console.log('계획 추가 후 월별 데이터:', monthlyData);
-        console.log('데이터 저장 시작');
+        console.log('📅 현재 월:', currentMonth);
+        
+        try {
+            const monthlyData = getMonthlyData(data.profiles[currentProfile], currentMonth);
+            console.log('📊 월별 데이터:', monthlyData);
+            
+            if (!Array.isArray(monthlyData.exercisePlans)) {
+                monthlyData.exercisePlans = [];
+            }
+            monthlyData.exercisePlans.push(plan);
+            console.log('✅ 월별 데이터에 계획 추가 완료');
+        } catch (monthlyError) {
+            console.error('❌ 월별 데이터 처리 중 오류:', monthlyError);
+            // 월별 데이터 오류가 있어도 계속 진행
+        }
+        
+        console.log('💾 데이터 저장 시작...');
         await saveData(data);
-        console.log('데이터 저장 완료');
+        console.log('✅ 데이터 저장 완료');
         
         // UI 업데이트
         console.log('UI 업데이트 시작');
@@ -1389,13 +1425,21 @@ async function updateRanking() {
     let currentRank = 1;
     let previousScore = null;
     
+    // 모든 점수가 0점인지 확인
+    const allScoresZero = rankings.every(item => item.score === 0);
+    
     rankings.forEach((item, index) => {
         const rankingItem = document.createElement('div');
         rankingItem.className = 'ranking-item';
         
-        // 같은 점수가 아니면 등수 업데이트
-        if (previousScore !== null && item.score !== previousScore) {
-            currentRank = index + 1;
+        // 모든 점수가 0점이면 모두 1등으로 표시
+        if (allScoresZero) {
+            currentRank = 1;
+        } else {
+            // 같은 점수가 아니면 등수 업데이트
+            if (previousScore !== null && item.score !== previousScore) {
+                currentRank = index + 1;
+            }
         }
         previousScore = item.score;
         
@@ -1451,7 +1495,43 @@ async function updateRanking() {
 // 프로필 카드 정보 업데이트 
 async function updateProfileCards() {
     const profiles = ['아빠', '엄마', '주환', '태환'];
+    const data = await loadData();
     
+    // 랭킹 계산
+    const rankings = [];
+    for (const profile of profiles) {
+        const score = calculateProfileScore(profile, data.profiles[profile]);
+        const profileData = await getProfileData(profile);
+        rankings.push({ 
+            name: profile, 
+            score: score,
+            grade: profileData.grade 
+        });
+    }
+    
+    rankings.sort((a, b) => b.score - a.score);
+    
+    // 등수 계산
+    let currentRank = 1;
+    let previousScore = null;
+    const allScoresZero = rankings.every(item => item.score === 0);
+    
+    const rankMap = {};
+    rankings.forEach((item, index) => {
+        // 모든 점수가 0점이면 모두 1등으로 표시
+        if (allScoresZero) {
+            currentRank = 1;
+        } else {
+            // 같은 점수가 아니면 등수 업데이트
+            if (previousScore !== null && item.score !== previousScore) {
+                currentRank = index + 1;
+            }
+        }
+        previousScore = item.score;
+        rankMap[item.name] = currentRank;
+    });
+    
+    // 프로필 카드 업데이트
     for (const profileName of profiles) {
         const profileData = await getProfileData(profileName);
         const profileCard = document.querySelector(`[data-profile="${profileName}"]`);
@@ -1459,9 +1539,11 @@ async function updateProfileCards() {
         if (profileCard) {
             const gradeElement = profileCard.querySelector('.grade');
             const scoreElement = profileCard.querySelector('.score');
+            const rankBadge = profileCard.querySelector('.rank-badge');
             
             if (gradeElement) gradeElement.textContent = profileData.grade;
             if (scoreElement) scoreElement.textContent = `${profileData.score}점`;
+            if (rankBadge) rankBadge.textContent = rankMap[profileName] || 1;
         }
     }
 }
@@ -1471,7 +1553,7 @@ function calculateProfileScore(profileName, profileData) {
     if (!profileData) return 0;
     
     const currentMonth = getCurrentMonthKey();
-    const currentDate = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
     
     // 현재 월의 활성 계획들만 사용
     let completionScore = 0;
@@ -1481,7 +1563,7 @@ function calculateProfileScore(profileName, profileData) {
     if (profileData.exercisePlans && Array.isArray(profileData.exercisePlans)) {
         const activePlans = profileData.exercisePlans.filter(plan => {
             // 현재 날짜 기준으로 아직 종료되지 않은 계획들
-            return plan.end_date >= currentDate;
+            return plan.end_date >= todayStr;
         });
         
         activePlans.forEach(plan => {
