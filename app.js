@@ -3,6 +3,7 @@ let currentProfile = null;
 let exercisePlan = [];
 let currentDate = new Date();
 let selectedPlan = null;
+let isUpdatingFromFirebase = false; // Firebase 업데이트 중인지 확인
 
 // Firebase 설정
 const firebaseConfig = {
@@ -218,6 +219,18 @@ async function initializeApp() {
         await migrateExistingPlansToMonthly();
         console.log('✅ 데이터 마이그레이션 완료');
         
+        // 월별 초기화 확인 (매월 1일)
+        if (loadingText) {
+            loadingText.textContent = '월별 랭킹 확인 중...';
+        }
+        console.log('🗓️ 월별 초기화 확인...');
+        const wasReset = await checkAndPerformMonthlyReset();
+        if (wasReset) {
+            console.log('✅ 월별 초기화 완료');
+        } else {
+            console.log('✅ 월별 초기화 불필요');
+        }
+        
         // Firebase 실시간 동기화 설정
         console.log('🔥 Firebase 동기화 설정...');
         setupFirebaseSync();
@@ -356,12 +369,19 @@ function setupFirebaseSync() {
     // Firestore 실시간 리스너 설정
     db.collection('families').doc(FAMILY_CODE)
         .onSnapshot(async (doc) => {
-            if (doc.exists && doc.metadata.hasPendingWrites === false) {
+            // 자신의 쓰기 작업으로 인한 업데이트는 무시
+            if (doc.exists && doc.metadata.hasPendingWrites === false && !isUpdatingFromFirebase) {
                 console.log("🔄 Firebase에서 실시간 데이터 수신");
-                const data = doc.data();
+                const firebaseData = doc.data();
                 
-                // 로컬 저장소에도 동기화
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                // 로컬 데이터와 Firebase 데이터 병합
+                const mergedData = await mergeDataSafely(firebaseData);
+                
+                // 로컬 저장소 업데이트
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
+                
+                // UI 업데이트 (Firebase 업데이트 중임을 표시)
+                isUpdatingFromFirebase = true;
                 
                 // 현재 프로필이 있으면 UI 업데이트
                 if (currentProfile) {
@@ -373,10 +393,12 @@ function setupFirebaseSync() {
                     await updateProfileCards();
                 }
                 
+                isUpdatingFromFirebase = false;
                 showMessage("🔄 동기화 완료", true);
             }
         }, (error) => {
             console.warn("⚠️ Firebase 실시간 동기화 오류:", error);
+            isUpdatingFromFirebase = false;
         });
 }
 
@@ -431,6 +453,23 @@ function setupEventListeners() {
         console.log('폼 제출 이벤트 발생');
         console.log('현재 프로필:', currentProfile);
         savePlan();
+    }
+    
+    // 정렬 드롭다운 이벤트 리스너
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        // 저장된 정렬 옵션 복원
+        const savedSort = localStorage.getItem('plans-sort-preference');
+        if (savedSort) {
+            sortSelect.value = savedSort;
+        }
+        
+        sortSelect.addEventListener('change', async function() {
+            const sortBy = this.value;
+            // 정렬 선택사항 저장
+            localStorage.setItem('plans-sort-preference', sortBy);
+            await updatePlansList(sortBy);
+        });
     }
     
     // 캘린더 네비게이션 (단일 이벤트 리스너)
@@ -620,6 +659,15 @@ async function selectProfile(profileName) {
     // 계획 목록 업데이트
     await updatePlansList();
     
+    // 정렬 드롭다운 초기화 (저장된 설정 적용)
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        const savedSort = localStorage.getItem('plans-sort-preference');
+        if (savedSort) {
+            sortSelect.value = savedSort;
+        }
+    }
+    
     // 캘린더 초기화 (첫 방문 시에도 제대로 표시되도록)
     currentDate = new Date();
     await updateCalendar();
@@ -770,7 +818,11 @@ async function savePlan() {
 }
 
 // 계획 목록 업데이트
-async function updatePlansList() {
+async function updatePlansList(sortBy = null) {
+    // sortBy가 제공되지 않으면 저장된 설정이나 기본값 사용
+    if (!sortBy) {
+        sortBy = localStorage.getItem('plans-sort-preference') || 'start-date-asc';
+    }
     const data = await loadData();
     const profileData = data.profiles[currentProfile] || { exercisePlans: [] };
     const plansList = document.getElementById('plans-list');
@@ -784,6 +836,12 @@ async function updatePlansList() {
                 <p style="font-size: 1rem;">새 계획을 추가해보세요! 💪</p>
             </div>
         `;
+        
+        // 계획 개수 표시 업데이트
+        const plansCount = document.getElementById('plans-count');
+        if (plansCount) {
+            plansCount.textContent = '0개 계획';
+        }
         return;
     }
     
@@ -818,13 +876,81 @@ async function updatePlansList() {
         plansCount.textContent = `${activePlans.length}개 계획`;
     }
     
-    // 현재 및 미래 계획들만 표시, 정렬 포함
-    activePlans
-    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date)) // ⬅️ 정렬
-    .forEach(plan => {
+    // 정렬 드롭다운 값 동기화
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect && sortSelect.value !== sortBy) {
+        sortSelect.value = sortBy;
+    }
+    
+    // 정렬된 계획들 표시
+    const sortedPlans = sortPlans(activePlans, sortBy);
+    sortedPlans.forEach(plan => {
         const planElement = createPlanElement(plan);
         plansList.appendChild(planElement);
     });
+}
+
+// 계획 정렬 함수
+function sortPlans(plans, sortBy) {
+    const plansCopy = [...plans]; // 원본 배열 보호
+    
+    switch (sortBy) {
+        case 'start-date-asc':
+            return plansCopy.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+            
+        case 'start-date-desc':
+            return plansCopy.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+            
+        case 'end-date-asc':
+            return plansCopy.sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+            
+        case 'end-date-desc':
+            return plansCopy.sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
+            
+        case 'created-date-desc':
+            return plansCopy.sort((a, b) => {
+                // created_date가 문자열 형태로 저장되어 있어서 id로 대체 (더 최근 id가 더 큰 숫자)
+                return (b.id || 0) - (a.id || 0);
+            });
+            
+        case 'created-date-asc':
+            return plansCopy.sort((a, b) => {
+                return (a.id || 0) - (b.id || 0);
+            });
+            
+        case 'progress-desc':
+            return plansCopy.sort((a, b) => {
+                const progressA = calculateProgress(a);
+                const progressB = calculateProgress(b);
+                return progressB - progressA;
+            });
+            
+        case 'progress-asc':
+            return plansCopy.sort((a, b) => {
+                const progressA = calculateProgress(a);
+                const progressB = calculateProgress(b);
+                return progressA - progressB;
+            });
+            
+        case 'type':
+            return plansCopy.sort((a, b) => {
+                // 운동 종류별로 정렬하고, 같은 종류면 시작일로 정렬
+                if (a.exercise_type === b.exercise_type) {
+                    return new Date(a.start_date) - new Date(b.start_date);
+                }
+                return a.exercise_type.localeCompare(b.exercise_type, 'ko');
+            });
+            
+        default:
+            return plansCopy.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+    }
+}
+
+// 계획의 진행률 계산 (퍼센트)
+function calculateProgress(plan) {
+    const completedCount = plan.completed_dates ? plan.completed_dates.length : 0;
+    const totalDays = calculateDaysBetween(plan.start_date, plan.end_date) + 1;
+    return totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
 }
 
 // 계획 요소 생성
@@ -1238,11 +1364,6 @@ async function toggleDateCompletion(dateStr) {
 
 // 랭킹 업데이트
 async function updateRanking() {
-    // 월별 랭킹 초기화 확인
-    const isNewMonth = checkMonthlyReset();
-    if (isNewMonth) {
-        console.log('새로운 월이 시작되었습니다. 랭킹이 초기화됩니다.');
-    }
     
     const data = await loadData();
     const rankings = [];
@@ -1345,23 +1466,52 @@ async function updateProfileCards() {
     }
 }
 
-// 프로필 점수 계산 (운동 완료 점수 + 계획 추가 점수)
+// 프로필 점수 계산 (현재 월 기준)
 function calculateProfileScore(profileName, profileData) {
-    if (!profileData || !profileData.exercisePlans) return 0;
+    if (!profileData) return 0;
     
-    // 기존 운동 완료 점수 계산
-    let completionScore = 0;
-    profileData.exercisePlans.forEach(plan => {
-        const completedDays = plan.completed_dates ? plan.completed_dates.length : 0;
-        completionScore += completedDays * getExerciseScore(plan.exercise_type);
-    });
-    
-    // 현재 월의 운동계획 추가 점수 (1개당 1점)
     const currentMonth = getCurrentMonthKey();
-    const monthlyData = getMonthlyData(profileData, currentMonth);
-    const planScore = monthlyData.exercisePlans ? monthlyData.exercisePlans.length : 0;
+    const currentDate = new Date().toISOString().split('T')[0];
     
-    // 총 점수 = 완료 점수 + 계획 점수
+    // 현재 월의 활성 계획들만 사용
+    let completionScore = 0;
+    let planScore = 0;
+    
+    // 현재 운영 중인 계획들 (전체 exercisePlans에서)
+    if (profileData.exercisePlans && Array.isArray(profileData.exercisePlans)) {
+        const activePlans = profileData.exercisePlans.filter(plan => {
+            // 현재 날짜 기준으로 아직 종료되지 않은 계획들
+            return plan.end_date >= currentDate;
+        });
+        
+        activePlans.forEach(plan => {
+            // 이번 달에 완료된 운동만 점수 계산
+            if (plan.completed_dates && Array.isArray(plan.completed_dates)) {
+                const thisMonthCompletions = plan.completed_dates.filter(date => {
+                    return date.startsWith(currentMonth.slice(0, 7)); // YYYY-MM 형식으로 비교
+                });
+                completionScore += thisMonthCompletions.length * getExerciseScore(plan.exercise_type);
+            }
+        });
+        
+        // 계획 보너스 점수 (활성 계획 1개당 1점)
+        planScore = activePlans.length;
+    }
+    
+    // 월별 데이터에서 추가 계획 점수 (하위 호환성)
+    const monthlyData = getMonthlyData(profileData, currentMonth);
+    if (monthlyData.exercisePlans && Array.isArray(monthlyData.exercisePlans)) {
+        // 중복 제거: 이미 활성 계획에 포함되지 않은 추가 계획들만
+        const additionalPlans = monthlyData.exercisePlans.filter(monthlyPlan => {
+            const isInActivePlans = profileData.exercisePlans && 
+                profileData.exercisePlans.some(activePlan => activePlan.id === monthlyPlan.id);
+            return !isInActivePlans;
+        });
+        planScore += additionalPlans.length;
+    }
+    
+    console.log(`${profileName} 점수 계산: 완료점수(${completionScore}) + 계획점수(${planScore}) = ${completionScore + planScore}`);
+    
     return completionScore + planScore;
 }
 
@@ -1388,18 +1538,152 @@ function getMonthlyData(profileData, monthKey) {
     return profileData.monthlyData[monthKey];
 }
 
-// 월별 랭킹 초기화 확인
-function checkMonthlyReset() {
+// 월별 랭킹 초기화 확인 및 처리
+async function checkAndPerformMonthlyReset() {
+    const now = new Date();
     const currentMonth = getCurrentMonthKey();
-    const lastResetMonth = localStorage.getItem('lastResetMonth');
+    const currentDate = now.getDate();
     
-    if (lastResetMonth !== currentMonth) {
-        console.log(`새로운 월 감지: ${currentMonth}, 랭킹 초기화`);
-        localStorage.setItem('lastResetMonth', currentMonth);
-        return true; // 새로운 월
+    // 매월 1일에만 초기화 실행
+    if (currentDate !== 1) {
+        return false;
     }
     
-    return false; // 동일한 월
+    const lastResetMonth = localStorage.getItem('lastResetMonth');
+    
+    // 이번 달에 이미 초기화했는지 확인
+    if (lastResetMonth === currentMonth) {
+        return false;
+    }
+    
+    console.log(`🗓️ 새로운 달 시작: ${currentMonth}, 월별 랭킹 초기화 시작...`);
+    
+    try {
+        // 데이터 로드
+        const data = await loadData();
+        let hasChanges = false;
+        
+        // 모든 프로필의 이전 달 데이터 정리
+        const profiles = ['아빠', '엄마', '주환', '태환'];
+        for (const profileName of profiles) {
+            const profileData = data.profiles[profileName];
+            if (!profileData) continue;
+            
+            // 이전 달 계획들을 completed 상태로 이동 (기록 보존)
+            if (profileData.exercisePlans && profileData.exercisePlans.length > 0) {
+                const yesterday = new Date(now);
+                yesterday.setDate(0); // 이전 달 마지막 날
+                const previousMonth = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}`;
+                
+                // 이전 달에 종료된 계획들을 완료된 계획으로 이동
+                const expiredPlans = profileData.exercisePlans.filter(plan => 
+                    plan.end_date < currentMonth.slice(0, 7) + '-01' // 이번 달 1일보다 이전에 종료
+                );
+                
+                if (expiredPlans.length > 0) {
+                    // 이전 달 월별 데이터에 완료된 계획들 저장
+                    const previousMonthData = getMonthlyData(profileData, previousMonth);
+                    expiredPlans.forEach(plan => {
+                        const exists = previousMonthData.exercisePlans.find(p => p.id === plan.id);
+                        if (!exists) {
+                            previousMonthData.exercisePlans.push(plan);
+                        }
+                    });
+                    
+                    // 현재 계획 목록에서 만료된 계획들 제거
+                    profileData.exercisePlans = profileData.exercisePlans.filter(plan => 
+                        plan.end_date >= currentMonth.slice(0, 7) + '-01'
+                    );
+                    
+                    hasChanges = true;
+                    console.log(`${profileName}: ${expiredPlans.length}개 만료된 계획을 이전 달로 이동`);
+                }
+            }
+            
+            // 새 달 월별 데이터 초기화
+            const currentMonthData = getMonthlyData(profileData, currentMonth);
+            if (!currentMonthData || Object.keys(currentMonthData).length === 0) {
+                profileData.monthlyData[currentMonth] = {
+                    exercisePlans: [],
+                    score: 0,
+                    completedCount: 0,
+                    resetDate: now.toISOString()
+                };
+                hasChanges = true;
+                console.log(`${profileName}: 새 달 데이터 초기화`);
+            }
+        }
+        
+        // 변경사항이 있으면 저장
+        if (hasChanges) {
+            await saveData(data);
+            console.log('✅ 월별 데이터 정리 및 초기화 완료');
+        }
+        
+        // 초기화 완료 표시
+        localStorage.setItem('lastResetMonth', currentMonth);
+        
+        // 사용자에게 알림
+        showMessage(`🎉 새로운 달이 시작되었습니다! (${currentMonth})\n🏆 랭킹이 초기화되었습니다.`, false);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ 월별 초기화 중 오류:', error);
+        return false;
+    }
+}
+
+// 기존 checkMonthlyReset 함수 (하위 호환성)
+function checkMonthlyReset() {
+    return checkAndPerformMonthlyReset();
+}
+
+// 수동 월별 초기화 (개발/테스트용)
+async function forceMonthlyReset() {
+    console.log('🔧 수동 월별 초기화 실행...');
+    
+    // 강제로 초기화 실행
+    localStorage.removeItem('lastResetMonth');
+    
+    const success = await checkAndPerformMonthlyReset();
+    if (success) {
+        console.log('✅ 수동 월별 초기화 완료');
+        // UI 강제 업데이트
+        await updateRanking();
+        await updateProfileCards();
+        if (currentProfile) {
+            await updatePlansList();
+        }
+    } else {
+        console.warn('⚠️ 수동 월별 초기화 실패');
+    }
+    
+    return success;
+}
+
+// 개발자 도구용 - 전역 함수로 노출
+if (typeof window !== 'undefined') {
+    window.forceMonthlyReset = forceMonthlyReset;
+    window.showCurrentMonthData = function() {
+        const currentMonth = getCurrentMonthKey();
+        console.log('현재 월:', currentMonth);
+        
+        loadData().then(data => {
+            console.log('전체 데이터:', data);
+            
+            ['아빠', '엄마', '주환', '태환'].forEach(profile => {
+                const profileData = data.profiles[profile];
+                if (profileData) {
+                    const score = calculateProfileScore(profile, profileData);
+                    console.log(`${profile}: ${score}점`);
+                    
+                    const monthlyData = getMonthlyData(profileData, currentMonth);
+                    console.log(`${profile} 월별 데이터:`, monthlyData);
+                }
+            });
+        });
+    };
 }
 
 // 기존 계획들을 월별 데이터로 마이그레이션
@@ -1534,12 +1818,20 @@ async function loadDataFromFirebase() {
     }
 }
 
-// Firebase에 데이터 저장
+// Firebase에 데이터 저장 (개선된 버전)
 async function saveDataToFirebase(data) {
     if (!isFirebaseAvailable) return false;
     
     try {
-        await db.collection('families').doc(FAMILY_CODE).set(data, { merge: true });
+        // 타임스탬프 추가로 동시 업데이트 감지
+        const dataWithTimestamp = {
+            ...data,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: navigator.userAgent.substring(0, 50) // 간단한 클라이언트 식별자
+        };
+        
+        // 전체 문서 교체 (merge: false)로 데이터 일관성 보장
+        await db.collection('families').doc(FAMILY_CODE).set(dataWithTimestamp);
         console.log("🔥 Firebase에 데이터 저장 성공");
         return true;
     } catch (error) {
@@ -1838,14 +2130,141 @@ async function loadData() {
     };
 }
 
+// 안전한 데이터 병합 (충돌 해결)
+async function mergeDataSafely(firebaseData) {
+    try {
+        console.log('🔄 데이터 병합 시작...');
+        
+        // 로컬 데이터 가져오기
+        const localDataStr = localStorage.getItem(STORAGE_KEY);
+        const localData = localDataStr ? JSON.parse(localDataStr) : null;
+        
+        // Firebase 데이터가 없으면 로컬 데이터 반환
+        if (!firebaseData) {
+            console.log('Firebase 데이터가 없음 - 로컬 데이터 사용');
+            return localData || getDefaultData();
+        }
+        
+        // 로컬 데이터가 없으면 Firebase 데이터 반환
+        if (!localData) {
+            console.log('로컬 데이터가 없음 - Firebase 데이터 사용');
+            return firebaseData;
+        }
+        
+        console.log('로컬과 Firebase 데이터 병합 중...');
+        
+        // 프로필별로 병합
+        const mergedProfiles = {};
+        const allProfiles = ['아빠', '엄마', '주환', '태환'];
+        
+        for (const profileName of allProfiles) {
+            const localProfile = localData.profiles?.[profileName] || { exercisePlans: [], monthlyData: {} };
+            const firebaseProfile = firebaseData.profiles?.[profileName] || { exercisePlans: [], monthlyData: {} };
+            
+            // 운동 계획 병합 (ID 기준으로 중복 제거)
+            const allPlans = [...(localProfile.exercisePlans || []), ...(firebaseProfile.exercisePlans || [])];
+            const uniquePlans = [];
+            const seenIds = new Set();
+            
+            // 최신 계획 우선 (높은 ID)
+            allPlans.sort((a, b) => (b.id || 0) - (a.id || 0));
+            
+            for (const plan of allPlans) {
+                if (!seenIds.has(plan.id)) {
+                    seenIds.add(plan.id);
+                    uniquePlans.push(plan);
+                }
+            }
+            
+            // 월별 데이터 병합
+            const mergedMonthlyData = { ...localProfile.monthlyData };
+            if (firebaseProfile.monthlyData) {
+                for (const [month, monthData] of Object.entries(firebaseProfile.monthlyData)) {
+                    if (!mergedMonthlyData[month]) {
+                        mergedMonthlyData[month] = monthData;
+                    } else {
+                        // 월별 계획도 병합
+                        const monthPlans = [...(mergedMonthlyData[month].exercisePlans || []), ...(monthData.exercisePlans || [])];
+                        const uniqueMonthPlans = [];
+                        const monthSeenIds = new Set();
+                        
+                        monthPlans.sort((a, b) => (b.id || 0) - (a.id || 0));
+                        for (const plan of monthPlans) {
+                            if (!monthSeenIds.has(plan.id)) {
+                                monthSeenIds.add(plan.id);
+                                uniqueMonthPlans.push(plan);
+                            }
+                        }
+                        
+                        mergedMonthlyData[month] = {
+                            ...monthData,
+                            exercisePlans: uniqueMonthPlans
+                        };
+                    }
+                }
+            }
+            
+            mergedProfiles[profileName] = {
+                exercisePlans: uniquePlans,
+                monthlyData: mergedMonthlyData,
+                score: 0, // 점수는 다시 계산됨
+                completedCount: 0 // 완료 수도 다시 계산됨
+            };
+        }
+        
+        const mergedData = {
+            defaultProfile: firebaseData.defaultProfile || localData.defaultProfile,
+            profiles: mergedProfiles
+        };
+        
+        console.log('✅ 데이터 병합 완료');
+        return mergedData;
+        
+    } catch (error) {
+        console.error('❌ 데이터 병합 중 오류:', error);
+        return firebaseData || localData || getDefaultData();
+    }
+}
+
+// 기본 데이터 구조 반환
+function getDefaultData() {
+    return {
+        defaultProfile: null,
+        profiles: {
+            '아빠': { exercisePlans: [], monthlyData: {}, score: 0, completedCount: 0 },
+            '엄마': { exercisePlans: [], monthlyData: {}, score: 0, completedCount: 0 },
+            '주환': { exercisePlans: [], monthlyData: {}, score: 0, completedCount: 0 },
+            '태환': { exercisePlans: [], monthlyData: {}, score: 0, completedCount: 0 }
+        }
+    };
+}
+
 // 데이터 저장 (Firebase + 로컬 백업)
 async function saveData(data) {
+    try {
+        // Firebase 업데이트 중임을 표시 (무한 루프 방지)
+        isUpdatingFromFirebase = true;
+        
     // 로컬에 백업 저장
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     
     // Firebase에도 저장 시도
     if (isFirebaseAvailable) {
-        await saveDataToFirebase(data);
+            const success = await saveDataToFirebase(data);
+            if (!success) {
+                console.warn('⚠️ Firebase 저장 실패 - 로컬 저장만 완료됨');
+            }
+        }
+        
+        // 짧은 지연 후 플래그 해제
+        setTimeout(() => {
+            isUpdatingFromFirebase = false;
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ 데이터 저장 중 오류:', error);
+        isUpdatingFromFirebase = false;
+        throw error;
     }
 }
 
