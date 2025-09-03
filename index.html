@@ -112,17 +112,18 @@
                 
                 <!-- 2시간 예보 -->
                 <div class="weather-forecast">
-                    <div class="forecast-title">🔮 앞으로 2시간</div>
                     <div class="forecast-items" id="forecast-items">
                         <div class="forecast-item">
                             <div class="forecast-time">1시간 후</div>
                             <div class="forecast-icon">🌤️</div>
                             <div class="forecast-temp">--°C</div>
+                            <div class="forecast-rain">🌧️ --%</div>
                         </div>
                         <div class="forecast-item">
                             <div class="forecast-time">2시간 후</div>
                             <div class="forecast-icon">⛅</div>
                             <div class="forecast-temp">--°C</div>
+                            <div class="forecast-rain">🌧️ --%</div>
                         </div>
                     </div>
                 </div>
@@ -137,11 +138,11 @@
 
     <!-- 운동 관리 화면 -->
     <div id="exercise-screen" class="screen">
-        <div class="header">
-                            <button class="back-btn">
-                    <span class="back-icon">🏡</span>
-                    <span class="back-text">홈으로</span>
-                </button>
+                <div class="header">
+            <button class="back-btn">
+                <span class="back-icon">🏡</span>
+                <span class="back-text">홈으로</span>
+            </button>
             <div class="profile-info">
                 <img id="current-profile-img" src="" alt="" class="current-profile-image">
                 <div class="profile-details">
@@ -149,7 +150,36 @@
                     <span id="current-profile-grade" class="current-grade"></span>
                 </div>
             </div>
+        </div>
 
+        <!-- AI 동기부여 메시지 -->
+        <div class="motivation-section">
+            <div class="motivation-container">
+                <div class="motivation-header">
+                    <div class="motivation-icon">🤖</div>
+                    <div class="motivation-title">AI 코치의 한마디</div>
+                    <button class="motivation-refresh-btn" id="motivation-refresh" title="새로운 메시지 생성">🔄</button>
+                </div>
+                <div class="motivation-content">
+                    <div class="motivation-message" id="motivation-message">
+                        AI가 당신의 운동 데이터를 분석하여 맞춤형 동기부여 메시지를 생성하고 있습니다...
+                    </div>
+                    <div class="motivation-stats" id="motivation-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">이번 주</span>
+                            <span class="stat-value" id="this-week-count">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">지난 주</span>
+                            <span class="stat-value" id="last-week-count">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">이번 달</span>
+                            <span class="stat-value" id="this-month-count">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="content">
