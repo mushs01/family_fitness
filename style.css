@@ -220,18 +220,7 @@ body {
     }
 }
 
-/* 프로필 선택 가이드 */
-.profile-select-guide {
-    margin: 20px auto 15px auto;
-    text-align: center;
-}
 
-.guide-text {
-    font-size: 1.2rem;
-    font-weight: 500;
-    color: #333;
-    margin: 0;
-}
 
 /* 프로필 그리드 */
 .profile-grid {
@@ -252,6 +241,7 @@ body {
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
+    position: relative;
 }
 
 .profile-card:hover {
@@ -273,6 +263,56 @@ body {
 
 .profile-card[data-profile="태환"] {
     border-top: 4px solid #dd6b20;
+}
+
+/* 순위 뱃지 (왼쪽 위) */
+.rank-badge {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #333;
+    font-weight: bold;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+    border: 3px solid white;
+    z-index: 10;
+}
+
+.rank-badge:nth-child(1) {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); /* 1위 - 금색 */
+}
+
+.profile-card:nth-child(2) .rank-badge {
+    background: linear-gradient(135deg, #c0c0c0 0%, #e5e5e5 100%); /* 2위 - 은색 */
+}
+
+.profile-card:nth-child(3) .rank-badge {
+    background: linear-gradient(135deg, #cd7f32 0%, #deb887 100%); /* 3위 - 동색 */
+}
+
+.profile-card:nth-child(4) .rank-badge {
+    background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%); /* 4위 - 회색 */
+}
+
+/* 계급 뱃지 (이미지 아래) */
+.grade-badge {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin: 10px auto 5px auto;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .profile-image-container {
@@ -792,5 +832,87 @@ body {
         max-width: 150px;
         padding: 10px 15px;
         font-size: 0.9rem;
+    }
+}
+
+/* 운동 계획 정렬 컨트롤 */
+.plans-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 15px 0;
+    padding: 10px 15px;
+    background: rgba(79, 172, 254, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(79, 172, 254, 0.2);
+}
+
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-controls label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.sort-dropdown {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    font-size: 0.85rem;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 150px;
+}
+
+.sort-dropdown:hover {
+    border-color: #4facfe;
+    box-shadow: 0 2px 4px rgba(79, 172, 254, 0.2);
+}
+
+.sort-dropdown:focus {
+    outline: none;
+    border-color: #4facfe;
+    box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.2);
+}
+
+.plans-count-info {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.plans-count-info span {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* 모바일에서 정렬 컨트롤 반응형 */
+@media (max-width: 768px) {
+    .plans-controls {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .sort-controls {
+        justify-content: space-between;
+    }
+    
+    .sort-dropdown {
+        min-width: 0;
+        flex: 1;
+    }
+    
+    .plans-count-info {
+        text-align: center;
     }
 }
