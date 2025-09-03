@@ -3411,8 +3411,8 @@ function initWeatherFeature() {
 // ================================
 
 // Hugging Face API 설정 (무료 Inference API)
-// 더 나은 한국어 텍스트 생성 모델 사용
-const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
+// 텍스트 생성에 적합한 모델 사용 (GPT-2 계열)
+const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
 const HUGGINGFACE_API_KEY = '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'; // 실제 사용 시 본인의 API 키로 교체
 
 // 대안 무료 AI API들 (Hugging Face 실패 시 사용)
@@ -3534,57 +3534,89 @@ function generateMotivationPrompt(data, weatherData) {
         }
     }
     
-    const basePrompt = `한국어로 답변해주세요. ${situationContext} ${familyContext} 이번달 총 ${thisMonth}회 운동했습니다.`;
-    const weatherPrompt = weatherContext ? ` ${weatherContext}` : '';
-    const requestPrompt = ` ${profileName}에게 운동 기록과 현재 날씨를 고려한 따뜻하고 격려하는 동기부여 메시지를 50자 이내로 생성해주세요.`;
+    // AI가 더 자연스럽게 생성할 수 있도록 간단하고 명확한 프롬프트 구성
+    const contextPrompt = `${profileName}의 운동 상황: ${situationContext} ${familyContext} 이번달 ${thisMonth}회 운동했습니다.`;
+    const weatherPrompt = weatherContext ? ` 날씨 상황: ${weatherContext}` : '';
+    const requestPrompt = `\n\n위 정보를 바탕으로 ${profileName}에게 따뜻하고 격려하는 운동 동기부여 메시지를 한국어로 40자 이내로 작성해주세요. 친근하고 응원하는 톤으로 말해주세요:`;
     
-    return basePrompt + weatherPrompt + requestPrompt;
+    return contextPrompt + weatherPrompt + requestPrompt;
 }
 
-// 스마트 AI 메시지 생성 (자동 생성이 더 품질 좋음)
+// 실제 AI 메시지 생성 (Hugging Face API 우선)
 async function callHuggingFaceAPI(prompt) {
-    // 🚀 고품질 자동 생성 메시지 우선 사용 (AI API보다 더 적절하고 다양함)
-    const smartMessage = generateMockMotivationMessage(prompt);
-    
-    // API 키가 있다면 실제 AI도 백그라운드에서 시도해보기
+    // 실제 AI API 우선 시도
     if (HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY') {
-        console.log('🤖 AI API 백그라운드 호출 시도 중...');
+        console.log('🤖 Hugging Face AI API 호출 중...');
         
-        // 백그라운드에서 AI API 실험적 호출 (비동기, 결과 영향 없음)
-        setTimeout(async () => {
-            try {
-                const response = await fetch(HUGGINGFACE_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        inputs: prompt,
-                        parameters: {
-                            max_new_tokens: 60,
-                            temperature: 0.8,
-                            do_sample: true,
-                            top_p: 0.9
-                        }
-                    })
-                });
+        try {
+            const response = await fetch(HUGGINGFACE_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    inputs: prompt,
+                    parameters: {
+                        max_new_tokens: 80,
+                        temperature: 0.7,
+                        do_sample: true,
+                        top_p: 0.9,
+                        repetition_penalty: 1.1
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                let aiMessage = result[0]?.generated_text || '';
                 
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('🤖 AI API 실험적 응답:', result[0]?.generated_text);
-                } else {
-                    console.log('🤖 AI API 응답 오류:', response.status);
+                console.log('🤖 원본 AI 응답:', aiMessage);
+                
+                // 프롬프트 부분 제거하고 새로 생성된 부분만 추출
+                if (aiMessage.includes(prompt)) {
+                    aiMessage = aiMessage.replace(prompt, '').trim();
                 }
-            } catch (error) {
-                console.log('🤖 AI API 백그라운드 호출 실패:', error.message);
+                
+                // 첫 번째 완전한 문장만 추출
+                let sentences = aiMessage.split(/[.!?]\s*/);
+                if (sentences.length > 0 && sentences[0].trim()) {
+                    aiMessage = sentences[0].trim();
+                    
+                    // 마침표나 느낌표가 없으면 추가
+                    if (!aiMessage.match(/[.!?]$/)) {
+                        aiMessage += '!';
+                    }
+                }
+                
+                // 50자 이내로 조정
+                if (aiMessage.length > 50) {
+                    aiMessage = aiMessage.substring(0, 47) + '...';
+                }
+                
+                // 최소 길이 체크 및 한국어 포함 여부 확인
+                const hasKorean = /[가-힣]/.test(aiMessage);
+                if (aiMessage && aiMessage.length > 5 && (hasKorean || aiMessage.length > 10)) {
+                    console.log('✅ AI API 메시지 생성 성공:', aiMessage);
+                    return aiMessage;
+                } else {
+                    throw new Error('AI 응답이 부적절하거나 너무 짧음');
+                }
+            } else {
+                const errorText = await response.text();
+                console.log('🚫 AI API 오류 상세:', errorText);
+                throw new Error(`AI API 응답 오류: ${response.status}`);
             }
-        }, 100);
+        } catch (error) {
+            console.log('❌ AI API 호출 실패, 백업 메시지 사용:', error.message);
+            // AI 실패시 백업으로 조합 방식 사용
+            return generateMockMotivationMessage(prompt);
+        }
+    } else {
+        console.log('⚠️ AI API 키가 없어서 백업 메시지 사용');
+        // API 키가 없으면 백업으로 조합 방식 사용
+        return generateMockMotivationMessage(prompt);
     }
-    
-    // 즉시 고품질 자동 생성 메시지 반환
-    console.log('✨ 스마트 자동 생성 메시지 사용');
-    return smartMessage;
 }
 
 // 동적 동기부여 메시지 생성 (AI처럼 자동 생성)
