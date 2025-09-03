@@ -684,6 +684,9 @@ async function selectProfile(profileName) {
     // 캘린더 초기화 (첫 방문 시에도 제대로 표시되도록)
     currentDate = new Date();
     await updateCalendar();
+    
+    // AI 동기부여 기능 초기화
+    initMotivationFeature();
 }
 
 // 현재 프로필 정보 업데이트
@@ -3177,6 +3180,7 @@ function getMockHourlyForecast() {
         let temp = currentTemp + Math.floor(Math.random() * 6) - 3; // ±3도 변동
         let icon = '01d';
         let description = 'clear sky';
+        let rainProbability = Math.floor(Math.random() * 40); // 0-40% 기본 확률
         
         // 시간에 따른 날씨 조정
         if (hour >= 6 && hour < 18) {
@@ -3185,15 +3189,23 @@ function getMockHourlyForecast() {
             icon = ['01n', '02n', '03n'][Math.floor(Math.random() * 3)];
         }
         
+        // 30% 확률로 비 오는 날씨
         if (Math.random() < 0.3) {
-            icon = '10d'; // 30% 확률로 비
+            icon = hour >= 6 && hour < 18 ? '10d' : '10n';
             description = 'rain';
+            rainProbability = Math.floor(Math.random() * 40) + 60; // 60-100% 확률
+        }
+        
+        // 구름 많은 날씨면 비올 확률 증가
+        if (icon.includes('03') || icon.includes('04')) {
+            rainProbability = Math.floor(Math.random() * 30) + 20; // 20-50% 확률
         }
         
         forecast.push({
             main: { temp },
             weather: [{ icon, description }],
-            dt_txt: futureHour.toISOString()
+            dt_txt: futureHour.toISOString(),
+            pop: rainProbability / 100 // API 형식에 맞게 0-1 범위로 변환
         });
     }
     
@@ -3223,14 +3235,17 @@ function updateForecastUI(forecastData) {
             const item = items[index];
             const temp = Math.round(forecast.main.temp);
             const iconCode = forecast.weather[0].icon;
+            const rainProbability = forecast.pop ? Math.round(forecast.pop * 100) : 0;
             
             const timeElement = item.querySelector('.forecast-time');
             const iconElement = item.querySelector('.forecast-icon');
             const tempElement = item.querySelector('.forecast-temp');
+            const rainElement = item.querySelector('.forecast-rain');
             
             if (timeElement) timeElement.textContent = `${index + 1}시간 후`;
             if (iconElement) iconElement.textContent = weatherIcons[iconCode] || '🌤️';
             if (tempElement) tempElement.textContent = `${temp}°C`;
+            if (rainElement) rainElement.textContent = `🌧️ ${rainProbability}%`;
         }
     });
 }
@@ -3321,10 +3336,12 @@ async function updateWeatherInfo() {
                 const timeElement = item.querySelector('.forecast-time');
                 const iconElement = item.querySelector('.forecast-icon');
                 const tempElement = item.querySelector('.forecast-temp');
+                const rainElement = item.querySelector('.forecast-rain');
                 
                 if (timeElement) timeElement.textContent = `${index + 1}시간 후`;
                 if (iconElement) iconElement.textContent = '🌤️';
                 if (tempElement) tempElement.textContent = '--°C';
+                if (rainElement) rainElement.textContent = '🌧️ --%';
             });
         }
     } finally {
@@ -3385,4 +3402,248 @@ function initWeatherFeature() {
     startWeatherAutoUpdate();
     
     console.log('✅ 날씨 기능 초기화 완료');
+}
+
+// ================================
+// AI 동기부여 메시지 기능
+// ================================
+
+// Hugging Face API 설정 (무료 Inference API)
+const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
+const HUGGINGFACE_API_KEY = 'hf_YOUR_API_KEY'; // 실제 사용 시 본인의 API 키로 교체
+
+// 운동 데이터 분석 함수
+function analyzeExerciseData(profileName) {
+    if (!exercisePlan || !currentProfile) return null;
+    
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    // 현재 프로필의 운동 기록 필터링
+    const userPlans = exercisePlan.filter(plan => plan.profile === profileName);
+    
+    // 이번 주 운동 횟수
+    const thisWeekExercises = userPlans.filter(plan => {
+        const completedDates = plan.completedDates || [];
+        return completedDates.some(dateStr => {
+            const date = new Date(dateStr);
+            return date >= oneWeekAgo && date <= now;
+        });
+    }).length;
+    
+    // 지난 주 운동 횟수
+    const lastWeekExercises = userPlans.filter(plan => {
+        const completedDates = plan.completedDates || [];
+        return completedDates.some(dateStr => {
+            const date = new Date(dateStr);
+            return date >= twoWeeksAgo && date < oneWeekAgo;
+        });
+    }).length;
+    
+    // 이번 달 운동 횟수
+    const thisMonthExercises = userPlans.filter(plan => {
+        const completedDates = plan.completedDates || [];
+        return completedDates.some(dateStr => {
+            const date = new Date(dateStr);
+            return date >= oneMonthAgo && date <= now;
+        });
+    }).length;
+    
+    // 가족 전체 평균 계산
+    const allProfiles = ['아빠', '엄마', '주환', '태환'];
+    const familyThisWeek = allProfiles.map(profile => {
+        const profilePlans = exercisePlan.filter(plan => plan.profile === profile);
+        return profilePlans.filter(plan => {
+            const completedDates = plan.completedDates || [];
+            return completedDates.some(dateStr => {
+                const date = new Date(dateStr);
+                return date >= oneWeekAgo && date <= now;
+            });
+        }).length;
+    });
+    
+    const familyAverage = familyThisWeek.reduce((sum, count) => sum + count, 0) / allProfiles.length;
+    
+    return {
+        profileName,
+        thisWeek: thisWeekExercises,
+        lastWeek: lastWeekExercises,
+        thisMonth: thisMonthExercises,
+        familyAverage: Math.round(familyAverage * 10) / 10,
+        trend: thisWeekExercises - lastWeekExercises,
+        isAboveAverage: thisWeekExercises > familyAverage
+    };
+}
+
+// AI 프롬프트 생성
+function generateMotivationPrompt(data) {
+    if (!data) return '';
+    
+    const { profileName, thisWeek, lastWeek, thisMonth, familyAverage, trend, isAboveAverage } = data;
+    
+    let situationContext = '';
+    if (trend > 0) {
+        situationContext = `${profileName}는 지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동을 더 많이 했습니다.`;
+    } else if (trend < 0) {
+        situationContext = `${profileName}는 지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동이 줄었습니다.`;
+    } else {
+        situationContext = `${profileName}는 지난주와 이번주 운동 횟수가 같습니다(${thisWeek}회).`;
+    }
+    
+    const familyContext = isAboveAverage 
+        ? `가족 평균(${familyAverage}회)보다 많이 운동하고 있습니다.`
+        : `가족 평균(${familyAverage}회)보다 적게 운동하고 있습니다.`;
+    
+    return `한국어로 답변해주세요. ${situationContext} ${familyContext} 이번달 총 ${thisMonth}회 운동했습니다. ${profileName}에게 따뜻하고 격려하는 운동 동기부여 메시지를 50자 이내로 생성해주세요.`;
+}
+
+// Hugging Face API 호출
+async function callHuggingFaceAPI(prompt) {
+    try {
+        // API 키가 설정되어 있다면 실제 API 호출
+        if (HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY') {
+            const response = await fetch(HUGGINGFACE_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    inputs: prompt,
+                    parameters: {
+                        max_new_tokens: 100,
+                        temperature: 0.7,
+                        do_sample: true
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('AI API 호출 실패');
+            }
+            
+            const result = await response.json();
+            return result[0]?.generated_text || '힘내세요! 오늘도 화이팅! 💪';
+        } else {
+            // API 키가 없다면 모의 메시지 생성
+            return generateMockMotivationMessage(prompt);
+        }
+    } catch (error) {
+        console.error('AI API 오류:', error);
+        return generateMockMotivationMessage(prompt);
+    }
+}
+
+// 모의 동기부여 메시지 생성
+function generateMockMotivationMessage(prompt) {
+    const messages = [
+        "오늘도 운동으로 건강한 하루 만들어요! 💪",
+        "꾸준함이 가장 큰 힘이에요! 화이팅! 🔥",
+        "조금씩이라도 계속하면 분명 달라질 거예요! ✨",
+        "운동은 최고의 투자입니다! 오늘도 파이팅! 🏃‍♂️",
+        "몸도 마음도 건강해지는 시간이에요! 💖",
+        "어제보다 오늘, 더 나은 나를 만들어가요! 🌟",
+        "포기하지 마세요! 당신은 할 수 있어요! 💪",
+        "건강한 삶의 시작은 지금부터예요! 🌱",
+        "운동하는 모습이 정말 멋져요! 👏",
+        "조금 힘들어도 미래의 나를 위해! 🚀"
+    ];
+    
+    // 운동 데이터 기반으로 메시지 선택
+    if (prompt.includes('많이')) {
+        return "정말 열심히 하고 계시네요! 이 페이스 유지해보세요! 🏆";
+    } else if (prompt.includes('줄었습니다')) {
+        return "괜찮아요! 다시 시작하면 돼요. 조금씩 늘려가봐요! 💪";
+    } else if (prompt.includes('평균보다 많이')) {
+        return "가족 중에서도 모범이시네요! 정말 대단해요! 🌟";
+    } else if (prompt.includes('평균보다 적게')) {
+        return "천천히 해도 괜찮아요. 꾸준함이 더 중요해요! 🐢";
+    }
+    
+    return messages[Math.floor(Math.random() * messages.length)];
+}
+
+// 통계 UI 업데이트
+function updateMotivationStats(data) {
+    if (!data) return;
+    
+    const thisWeekElement = document.getElementById('this-week-count');
+    const lastWeekElement = document.getElementById('last-week-count');
+    const thisMonthElement = document.getElementById('this-month-count');
+    
+    if (thisWeekElement) thisWeekElement.textContent = `${data.thisWeek}회`;
+    if (lastWeekElement) lastWeekElement.textContent = `${data.lastWeek}회`;
+    if (thisMonthElement) thisMonthElement.textContent = `${data.thisMonth}회`;
+}
+
+// 동기부여 메시지 생성 및 표시
+async function generateMotivationMessage() {
+    const messageElement = document.getElementById('motivation-message');
+    const refreshBtn = document.getElementById('motivation-refresh');
+    
+    if (!messageElement || !currentProfile) return;
+    
+    try {
+        // 로딩 상태 표시
+        refreshBtn?.classList.add('loading');
+        messageElement.classList.add('generating');
+        messageElement.textContent = 'AI가 맞춤형 메시지를 생성하고 있습니다...';
+        
+        // 운동 데이터 분석
+        const data = analyzeExerciseData(currentProfile);
+        
+        if (data) {
+            // 통계 업데이트
+            updateMotivationStats(data);
+            
+            // AI 프롬프트 생성
+            const prompt = generateMotivationPrompt(data);
+            console.log('AI 프롬프트:', prompt);
+            
+            // AI 메시지 생성
+            const aiMessage = await callHuggingFaceAPI(prompt);
+            
+            // 메시지 표시
+            messageElement.textContent = aiMessage;
+            
+            console.log('✅ AI 동기부여 메시지 생성 완료:', aiMessage);
+        } else {
+            messageElement.textContent = '운동 기록을 더 쌓으시면 맞춤형 메시지를 드릴 수 있어요! 💪';
+        }
+        
+    } catch (error) {
+        console.error('❌ 동기부여 메시지 생성 실패:', error);
+        messageElement.textContent = '오늘도 건강한 하루 만들어봐요! 화이팅! 💪';
+    } finally {
+        // 로딩 상태 해제
+        refreshBtn?.classList.remove('loading');
+        messageElement.classList.remove('generating');
+    }
+}
+
+// 동기부여 새로고침 버튼 이벤트
+function initMotivationRefreshButton() {
+    const refreshBtn = document.getElementById('motivation-refresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            generateMotivationMessage();
+        });
+    }
+}
+
+// 동기부여 기능 초기화
+function initMotivationFeature() {
+    console.log('🤖 AI 동기부여 기능 초기화 시작');
+    
+    // 새로고침 버튼 이벤트 등록
+    initMotivationRefreshButton();
+    
+    // 현재 프로필이 있으면 즉시 메시지 생성
+    if (currentProfile) {
+        generateMotivationMessage();
+    }
+    
+    console.log('✅ AI 동기부여 기능 초기화 완료');
 }
