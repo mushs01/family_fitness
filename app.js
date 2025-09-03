@@ -421,6 +421,18 @@ function setupEventListeners() {
         await updateProfileCards();
     });
     
+    // 월별 랭킹 상세 버튼
+    document.getElementById('monthly-detail-btn').addEventListener('click', function() {
+        showMonthlyRankingScreen();
+    });
+    
+    // 월별 랭킹 뒤로 가기 버튼
+    document.getElementById('monthly-ranking-back').addEventListener('click', async function() {
+        showScreen('profile-screen');
+        await updateRanking();
+        await updateProfileCards();
+    });
+    
     // 탭 버튼 클릭 이벤트
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
@@ -462,6 +474,23 @@ function setupEventListeners() {
         btn.addEventListener('click', async function() {
             const direction = this.dataset.nav;
             await navigateMonth(direction);
+        });
+    });
+    
+    // 월별 랭킹 네비게이션
+    document.querySelectorAll('.month-nav').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const direction = this.dataset.nav;
+            navigateMonthlyRanking(direction);
+        });
+    });
+    
+    // 차트 범위 버튼
+    document.querySelectorAll('.chart-range-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.chart-range-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            updateRankingChart();
         });
     });
     
@@ -1512,7 +1541,7 @@ async function updateRanking() {
                     <div style="display: none; width: 60px; height: 60px; border-radius: 50%; background: #007bff; color: white; justify-content: center; align-items: center; font-size: 1.5rem; border: 3px solid ${borderColor};">
                         ${item.name === '아빠' ? '👨' : item.name === '엄마' ? '👩' : item.name === '주환' ? '👦' : '🧒'}
                     </div>
-                    <div class="rank-badge" style="position: absolute; top: -8px; left: -8px; width: 30px; height: 30px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; border: 2px solid ${borderColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+                    <div class="rank-badge" style="position: absolute; top: -5px; left: -5px; width: 20px; height: 20px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border: 2px solid ${borderColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
                         ${trophyIcon}
                     </div>
                     <div class="grade-badge" style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; font-weight: bold; border: 1px solid white;">
@@ -1912,6 +1941,412 @@ function getExerciseScore(exerciseType) {
         '기타': 5
     };
     return scores[exerciseType] || 5;
+}
+
+// 월별 랭킹 화면 표시
+let selectedMonthDate = new Date();
+
+function showMonthlyRankingScreen() {
+    selectedMonthDate = new Date(); // 현재 월로 초기화
+    showScreen('monthly-ranking-screen');
+    updateMonthlyRankingData();
+}
+
+// 월별 랭킹 데이터 업데이트
+async function updateMonthlyRankingData() {
+    const year = selectedMonthDate.getFullYear();
+    const month = selectedMonthDate.getMonth() + 1;
+    const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+    
+    // 월 제목 업데이트
+    document.getElementById('selected-month-title').textContent = `${year}년 ${month}월`;
+    
+    try {
+        const data = await loadData();
+        
+        // 해당 월 데이터 수집
+        const monthlyScores = {};
+        const monthlyExercises = {};
+        let totalExerciseCount = 0;
+        let champion = '-';
+        let maxScore = 0;
+        
+        // 각 프로필의 월별 데이터 계산
+        Object.keys(data.profiles).forEach(profileName => {
+            const profile = data.profiles[profileName];
+            let monthScore = 0;
+            let exerciseCount = 0;
+            
+            // monthlyData에서 해당 월 데이터 찾기
+            if (profile.monthlyData && profile.monthlyData[monthKey]) {
+                const monthData = profile.monthlyData[monthKey];
+                monthScore = monthData.score || 0;
+                exerciseCount = monthData.completedExercises ? monthData.completedExercises.length : 0;
+            }
+            
+            // 현재 월인 경우 활성 계획도 포함
+            if (year === new Date().getFullYear() && month === new Date().getMonth() + 1) {
+                if (profile.exercisePlans) {
+                    profile.exercisePlans.forEach(plan => {
+                        if (plan.completed_dates) {
+                            plan.completed_dates.forEach(dateStr => {
+                                const planDate = new Date(dateStr);
+                                if (planDate.getFullYear() === year && planDate.getMonth() + 1 === month) {
+                                    monthScore += getExerciseScore(plan.exercise_type);
+                                    exerciseCount++;
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+            
+            monthlyScores[profileName] = monthScore;
+            monthlyExercises[profileName] = exerciseCount;
+            totalExerciseCount += exerciseCount;
+            
+            if (monthScore > maxScore) {
+                maxScore = monthScore;
+                champion = profileName;
+            }
+        });
+        
+        // 통계 요약 업데이트
+        document.getElementById('monthly-champion').textContent = champion;
+        document.getElementById('total-exercises').textContent = `${totalExerciseCount}회`;
+        
+        // 랭킹 리스트 생성
+        const rankingItems = Object.keys(monthlyScores)
+            .map(name => ({
+                name,
+                score: monthlyScores[name],
+                exercises: monthlyExercises[name]
+            }))
+            .sort((a, b) => b.score - a.score);
+        
+        updateMonthlyRankingList(rankingItems);
+        updateRankingChart();
+        updateMonthlyDetails(rankingItems, monthKey);
+        
+    } catch (error) {
+        console.error('월별 랭킹 데이터 로드 중 오류:', error);
+    }
+}
+
+// 월별 랭킹 리스트 업데이트
+function updateMonthlyRankingList(rankingItems) {
+    const container = document.getElementById('monthly-ranking-items');
+    container.innerHTML = '';
+    
+    rankingItems.forEach((item, index) => {
+        const rank = index + 1;
+        const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+        
+        const trophyIcon = rank === 1 ? '🏆' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🏅';
+        
+        const imgSrc = getProfileImageSrc(item.name);
+        
+        const rankingItem = document.createElement('div');
+        rankingItem.className = 'monthly-ranking-item';
+        
+        rankingItem.innerHTML = `
+            <div class="monthly-rank-position ${rankClass}">
+                ${trophyIcon}
+            </div>
+            <div class="monthly-member-info">
+                <img src="${imgSrc}" alt="${item.name}" class="monthly-member-avatar" 
+                     onerror="this.style.display='none'">
+                <div class="monthly-member-name">${item.name}</div>
+            </div>
+            <div class="monthly-member-stats">
+                <div class="monthly-score">${item.score}점</div>
+                <div class="monthly-exercises">${item.exercises}회</div>
+            </div>
+        `;
+        
+        container.appendChild(rankingItem);
+    });
+}
+
+// 랭킹 차트 업데이트 (꺾은선 그래프)
+async function updateRankingChart() {
+    try {
+        const data = await loadData();
+        const activeBtn = document.querySelector('.chart-range-btn.active');
+        const months = activeBtn.id === 'chart-range-12' ? 12 : 6;
+        
+        // 차트 데이터 수집
+        const chartData = await collectChartData(data, months);
+        
+        // 차트 렌더링
+        renderRankingChart(chartData);
+        
+        // 범례 업데이트
+        updateChartLegend();
+        
+    } catch (error) {
+        console.error('랭킹 차트 업데이트 중 오류:', error);
+    }
+}
+
+// 차트 데이터 수집
+async function collectChartData(data, monthsCount) {
+    const currentDate = new Date();
+    const chartData = {
+        months: [],
+        members: {
+            '아빠': [],
+            '엄마': [],
+            '주환': [],
+            '태환': []
+        }
+    };
+    
+    // 지정된 개월 수만큼 과거 데이터 수집
+    for (let i = monthsCount - 1; i >= 0; i--) {
+        const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth() + 1;
+        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+        
+        // 월 라벨 추가
+        chartData.months.push(`${month}월`);
+        
+        // 각 멤버의 해당 월 랭킹 계산
+        const monthlyScores = {};
+        
+        Object.keys(data.profiles).forEach(profileName => {
+            const profile = data.profiles[profileName];
+            let monthScore = 0;
+            
+            // monthlyData에서 해당 월 데이터 찾기
+            if (profile.monthlyData && profile.monthlyData[monthKey]) {
+                monthScore = profile.monthlyData[monthKey].score || 0;
+            }
+            
+            // 현재 월인 경우 활성 계획도 포함
+            if (year === currentDate.getFullYear() && month === currentDate.getMonth() + 1) {
+                if (profile.exercisePlans) {
+                    profile.exercisePlans.forEach(plan => {
+                        if (plan.completed_dates) {
+                            plan.completed_dates.forEach(dateStr => {
+                                const planDate = new Date(dateStr);
+                                if (planDate.getFullYear() === year && planDate.getMonth() + 1 === month) {
+                                    monthScore += getExerciseScore(plan.exercise_type);
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+            
+            monthlyScores[profileName] = monthScore;
+        });
+        
+        // 점수별 랭킹 계산
+        const sortedMembers = Object.keys(monthlyScores)
+            .map(name => ({ name, score: monthlyScores[name] }))
+            .sort((a, b) => b.score - a.score);
+        
+        // 각 멤버의 랭킹 저장 (동점 처리)
+        Object.keys(chartData.members).forEach(memberName => {
+            let rank = 1;
+            for (let j = 0; j < sortedMembers.length; j++) {
+                if (sortedMembers[j].name === memberName) {
+                    rank = j + 1;
+                    break;
+                }
+                // 동점인 경우 같은 순위
+                if (j > 0 && sortedMembers[j].score === sortedMembers[j-1].score) {
+                    rank = j; // 이전 순위와 동일
+                } else {
+                    rank = j + 1;
+                }
+            }
+            
+            // 점수가 0인 경우 랭킹을 4위로 설정
+            if (monthlyScores[memberName] === 0) {
+                rank = 4;
+            }
+            
+            chartData.members[memberName].push(rank);
+        });
+    }
+    
+    return chartData;
+}
+
+// 차트 렌더링
+function renderRankingChart(chartData) {
+    const svg = document.getElementById('ranking-chart-svg');
+    const xAxisContainer = document.getElementById('chart-x-axis');
+    
+    // SVG 초기화
+    svg.innerHTML = '';
+    xAxisContainer.innerHTML = '';
+    
+    if (chartData.months.length === 0) {
+        svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#666" font-size="14">데이터가 없습니다</text>';
+        return;
+    }
+    
+    const svgRect = svg.getBoundingClientRect();
+    const width = svgRect.width - 40; // 좌우 여백
+    const height = svgRect.height - 40; // 상하 여백
+    const startX = 20;
+    const startY = 20;
+    
+    // 그리드 라인 그리기
+    for (let i = 1; i <= 4; i++) {
+        const y = startY + (height / 4) * (i - 1);
+        const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        gridLine.setAttribute('x1', startX);
+        gridLine.setAttribute('y1', y);
+        gridLine.setAttribute('x2', startX + width);
+        gridLine.setAttribute('y2', y);
+        gridLine.setAttribute('class', 'chart-grid-line');
+        svg.appendChild(gridLine);
+    }
+    
+    // X축 라벨 추가
+    chartData.months.forEach((month, index) => {
+        const label = document.createElement('div');
+        label.className = 'x-axis-label';
+        label.textContent = month;
+        label.style.flex = '1';
+        label.style.textAlign = 'center';
+        xAxisContainer.appendChild(label);
+    });
+    
+    // 각 멤버의 선 그리기
+    Object.keys(chartData.members).forEach(memberName => {
+        const rankings = chartData.members[memberName];
+        if (rankings.length === 0) return;
+        
+        // 선 그리기
+        let pathData = '';
+        const points = [];
+        
+        rankings.forEach((rank, index) => {
+            const x = startX + (width / (chartData.months.length - 1)) * index;
+            const y = startY + (height / 4) * (rank - 1);
+            
+            points.push({ x, y, rank, month: chartData.months[index] });
+            
+            if (index === 0) {
+                pathData += `M ${x} ${y}`;
+            } else {
+                pathData += ` L ${x} ${y}`;
+            }
+        });
+        
+        // 선 요소 생성
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('class', `chart-line member-${memberName}`);
+        svg.appendChild(path);
+        
+        // 점 그리기
+        points.forEach(point => {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', point.x);
+            circle.setAttribute('cy', point.y);
+            circle.setAttribute('class', `chart-point member-${memberName}`);
+            circle.setAttribute('data-member', memberName);
+            circle.setAttribute('data-rank', point.rank);
+            circle.setAttribute('data-month', point.month);
+            
+            // 호버 이벤트
+            circle.addEventListener('mouseenter', function() {
+                showChartTooltip(this, memberName, point.rank, point.month);
+            });
+            circle.addEventListener('mouseleave', hideChartTooltip);
+            
+            svg.appendChild(circle);
+        });
+    });
+}
+
+// 차트 범례 업데이트
+function updateChartLegend() {
+    const legendContainer = document.getElementById('chart-legend');
+    legendContainer.innerHTML = '';
+    
+    const members = ['아빠', '엄마', '주환', '태환'];
+    
+    members.forEach(member => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        
+        legendItem.innerHTML = `
+            <div class="legend-color member-${member}"></div>
+            <span>${member}</span>
+        `;
+        
+        legendContainer.appendChild(legendItem);
+    });
+}
+
+// 차트 툴팁 표시
+function showChartTooltip(element, member, rank, month) {
+    // 간단한 타이틀 속성으로 툴팁 표시
+    element.setAttribute('title', `${member}: ${month} ${rank}위`);
+}
+
+// 차트 툴팁 숨기기
+function hideChartTooltip(element) {
+    if (element && element.removeAttribute) {
+        element.removeAttribute('title');
+    }
+}
+
+// 월별 상세 정보 업데이트
+function updateMonthlyDetails(rankingItems, monthKey) {
+    const container = document.getElementById('monthly-details-content');
+    container.innerHTML = '';
+    
+    const totalScore = rankingItems.reduce((sum, item) => sum + item.score, 0);
+    const totalExercises = rankingItems.reduce((sum, item) => sum + item.exercises, 0);
+    const avgScore = rankingItems.length > 0 ? Math.round(totalScore / rankingItems.length) : 0;
+    
+    const details = [
+        { label: '총 획득 점수', value: `${totalScore}점` },
+        { label: '총 운동 횟수', value: `${totalExercises}회` },
+        { label: '평균 점수', value: `${avgScore}점` },
+        { label: '참여 멤버', value: `${rankingItems.length}명` }
+    ];
+    
+    details.forEach(detail => {
+        const detailItem = document.createElement('div');
+        detailItem.className = 'detail-item';
+        detailItem.innerHTML = `
+            <div class="detail-label">${detail.label}</div>
+            <div class="detail-value">${detail.value}</div>
+        `;
+        container.appendChild(detailItem);
+    });
+}
+
+// 월별 랭킹 네비게이션
+function navigateMonthlyRanking(direction) {
+    if (direction === 'prev') {
+        selectedMonthDate.setMonth(selectedMonthDate.getMonth() - 1);
+    } else if (direction === 'next') {
+        selectedMonthDate.setMonth(selectedMonthDate.getMonth() + 1);
+    }
+    
+    updateMonthlyRankingData();
+}
+
+// 프로필 이미지 소스 가져오기
+function getProfileImageSrc(profileName) {
+    const imageMap = {
+        '아빠': 'dad.png',
+        '엄마': 'mom.png',
+        '주환': 'juhwan.png',
+        '태환': 'taehwan.png'
+    };
+    return imageMap[profileName] || 'icon.png';
 }
 
 // 프로필 데이터 가져오기
