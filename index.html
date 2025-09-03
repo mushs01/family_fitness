@@ -36,11 +36,24 @@
     <!-- 프로필 선택 화면 -->
     <div id="profile-screen" class="screen">
         <div class="header">
+            <!-- 날씨 정보 섹션 -->
+            <div class="weather-section">
+                <div class="weather-container">
+                    <div class="weather-icon" id="weather-icon">🌤️</div>
+                    <div class="weather-info">
+                        <div class="weather-temp" id="weather-temp">--°C</div>
+                        <div class="weather-desc" id="weather-desc">날씨 정보 로딩중...</div>
+                        <div class="weather-location" id="weather-location">📍 위치 확인중...</div>
+                    </div>
+                    <button class="weather-refresh-btn" id="weather-refresh" title="날씨 새로고침">🔄</button>
+                </div>
+            </div>
+
             <div class="family-ranking">
                 <div class="ranking-title-container">
-                    <button id="monthly-detail-btn" class="detail-btn" title="월별 상세 랭킹 보기">📊</button>
                     <h3 id="family-ranking-title">🏆 이번달 가족랭킹</h3>
                 </div>
+                <button id="monthly-detail-btn" class="detail-btn detail-btn-left" title="월별 상세 랭킹 보기">📊</button>
                 <div id="ranking-list" class="ranking-list">
                     <!-- 랭킹이 여기에 동적으로 표시됩니다 -->
                 </div>
