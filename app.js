@@ -3411,7 +3411,7 @@ function initWeatherFeature() {
 // Hugging Face API 설정 (무료 Inference API)
 // 더 나은 한국어 텍스트 생성 모델 사용
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
-const HUGGINGFACE_API_KEY = 'hf_YOUR_API_KEY'; // 실제 사용 시 본인의 API 키로 교체
+const HUGGINGFACE_API_KEY = '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'; // 실제 사용 시 본인의 API 키로 교체
 
 // 대안 무료 AI API들 (Hugging Face 실패 시 사용)
 const ALTERNATIVE_AI_APIS = [
