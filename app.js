@@ -1984,21 +1984,29 @@ async function updateMonthlyRankingData() {
                 exerciseCount = monthData.completedExercises ? monthData.completedExercises.length : 0;
             }
             
-            // 현재 월인 경우 활성 계획도 포함
-            if (year === new Date().getFullYear() && month === new Date().getMonth() + 1) {
-                if (profile.exercisePlans) {
-                    profile.exercisePlans.forEach(plan => {
-                        if (plan.completed_dates) {
-                            plan.completed_dates.forEach(dateStr => {
-                                const planDate = new Date(dateStr);
-                                if (planDate.getFullYear() === year && planDate.getMonth() + 1 === month) {
+            // 활성 계획에서 해당 월의 완료 기록도 확인 (월별 초기화가 안된 경우 대비)
+            if (profile.exercisePlans) {
+                profile.exercisePlans.forEach(plan => {
+                    if (plan.completed_dates) {
+                        plan.completed_dates.forEach(dateStr => {
+                            const planDate = new Date(dateStr);
+                            if (planDate.getFullYear() === year && planDate.getMonth() + 1 === month) {
+                                // monthlyData에 이미 포함되지 않은 경우만 추가
+                                const isAlreadyInMonthlyData = profile.monthlyData && 
+                                    profile.monthlyData[monthKey] && 
+                                    profile.monthlyData[monthKey].completedExercises &&
+                                    profile.monthlyData[monthKey].completedExercises.some(ex => 
+                                        ex.date === dateStr && ex.planId === plan.id
+                                    );
+                                
+                                if (!isAlreadyInMonthlyData) {
                                     monthScore += getExerciseScore(plan.exercise_type);
                                     exerciseCount++;
                                 }
-                            });
-                        }
-                    });
-                }
+                            }
+                        });
+                    }
+                });
             }
             
             monthlyScores[profileName] = monthScore;
@@ -2124,20 +2132,28 @@ async function collectChartData(data, monthsCount) {
                 monthScore = profile.monthlyData[monthKey].score || 0;
             }
             
-            // 현재 월인 경우 활성 계획도 포함
-            if (year === currentDate.getFullYear() && month === currentDate.getMonth() + 1) {
-                if (profile.exercisePlans) {
-                    profile.exercisePlans.forEach(plan => {
-                        if (plan.completed_dates) {
-                            plan.completed_dates.forEach(dateStr => {
-                                const planDate = new Date(dateStr);
-                                if (planDate.getFullYear() === year && planDate.getMonth() + 1 === month) {
+            // 활성 계획에서 해당 월의 완료 기록도 확인 (월별 초기화가 안된 경우 대비)
+            if (profile.exercisePlans) {
+                profile.exercisePlans.forEach(plan => {
+                    if (plan.completed_dates) {
+                        plan.completed_dates.forEach(dateStr => {
+                            const planDate = new Date(dateStr);
+                            if (planDate.getFullYear() === year && planDate.getMonth() + 1 === month) {
+                                // monthlyData에 이미 포함되지 않은 경우만 추가
+                                const isAlreadyInMonthlyData = profile.monthlyData && 
+                                    profile.monthlyData[monthKey] && 
+                                    profile.monthlyData[monthKey].completedExercises &&
+                                    profile.monthlyData[monthKey].completedExercises.some(ex => 
+                                        ex.date === dateStr && ex.planId === plan.id
+                                    );
+                                
+                                if (!isAlreadyInMonthlyData) {
                                     monthScore += getExerciseScore(plan.exercise_type);
                                 }
-                            });
-                        }
-                    });
-                }
+                            }
+                        });
+                    }
+                });
             }
             
             monthlyScores[profileName] = monthScore;
