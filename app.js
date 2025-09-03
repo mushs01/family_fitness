@@ -3729,18 +3729,10 @@ function getRandomItem(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
 
-// AI 상태 표시기와 함께 메시지 업데이트
+// 메시지만 업데이트 (상태 표시기는 헤더에 고정)
 function updateMessageWithAIIndicator(messageElement, text) {
-    // AI 상태 표시기 HTML
-    const aiIndicatorHTML = `
-        <div class="ai-status-indicator">
-            <div class="ai-brain-icon">🧠</div>
-            <div class="ai-status-text">AI 자동 생성</div>
-        </div>
-    `;
-    
-    // 메시지와 상태 표시기 함께 설정
-    messageElement.innerHTML = aiIndicatorHTML + text;
+    // 단순히 텍스트만 설정 (상태 표시기는 헤더에 있음)
+    messageElement.textContent = text;
 }
 
 // 통계 UI 업데이트 함수 제거됨 (메시지만 표시)
