@@ -767,22 +767,22 @@ async function savePlan() {
         };
         
         console.log('새 계획 생성:', plan);
-    
-    // 데이터 저장
-    const data = await loadData();
-    if (!data.profiles[currentProfile]) {
-        data.profiles[currentProfile] = { 
-            exercisePlans: [], 
-            monthlyData: {},
-            score: 0, 
-            completedCount: 0 
-        };
-    }
-    
-    // 기존 exercisePlans에도 저장 (하위 호환성)
-    data.profiles[currentProfile].exercisePlans.push(plan);
-    
-            // 현재 월별 데이터에도 저장
+        
+        // 데이터 저장
+        const data = await loadData();
+        if (!data.profiles[currentProfile]) {
+            data.profiles[currentProfile] = { 
+                exercisePlans: [], 
+                monthlyData: {},
+                score: 0, 
+                completedCount: 0 
+            };
+        }
+        
+        // 기존 exercisePlans에도 저장 (하위 호환성)
+        data.profiles[currentProfile].exercisePlans.push(plan);
+        
+        // 현재 월별 데이터에도 저장
         const currentMonth = getCurrentMonthKey();
         console.log('현재 월:', currentMonth);
         const monthlyData = getMonthlyData(data.profiles[currentProfile], currentMonth);
