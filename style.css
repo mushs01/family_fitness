@@ -145,39 +145,60 @@ body {
     font-size: 1.8rem;
 }
 
+/* 프로필 카드 축소 */
+.profile-stats-compact {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 8px;
+}
+
+.profile-stats-compact .score {
+    color: #4a90e2;
+    font-weight: bold;
+}
+
+.profile-stats-compact .grade {
+    color: #666;
+}
+
+.profile-card {
+    background: white;
+    border-radius: 15px;
+    padding: 15px !important; /* 기존 20px에서 축소 */
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    min-height: 140px !important; /* 기존보다 축소 */
+}
+
 /* 날씨 섹션 */
 .weather-section {
-    margin-bottom: 20px;
+    margin: 20px 0;
 }
 
 .weather-container {
-    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 15px;
     padding: 20px;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 5px 15px rgba(116, 185, 255, 0.3);
+    color: #333;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     position: relative;
     overflow: hidden;
 }
 
-.weather-container::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: weatherGlow 4s ease-in-out infinite;
+.weather-current {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
 }
 
-@keyframes weatherGlow {
-    0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.3; }
-    50% { transform: rotate(10deg) scale(1.1); opacity: 0.1; }
-}
+/* 투명 배경에는 글로우 효과 제거 */
 
 .weather-icon {
     font-size: 3rem;
@@ -202,30 +223,33 @@ body {
     font-size: 2.2rem;
     font-weight: bold;
     margin-bottom: 5px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    color: #4a90e2;
+    text-shadow: none;
 }
 
 .weather-desc {
     font-size: 1rem;
-    opacity: 0.9;
+    opacity: 0.8;
     margin-bottom: 3px;
     text-transform: capitalize;
+    color: #666;
 }
 
 .weather-location {
     font-size: 0.85rem;
-    opacity: 0.8;
+    opacity: 0.7;
     display: flex;
     align-items: center;
+    color: #888;
 }
 
 .weather-refresh-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(116, 185, 255, 0.2);
+    border: 2px solid rgba(116, 185, 255, 0.3);
     border-radius: 50%;
     width: 45px;
     height: 45px;
-    color: white;
+    color: #4a90e2;
     font-size: 1.2rem;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -237,7 +261,8 @@ body {
 }
 
 .weather-refresh-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(116, 185, 255, 0.3);
+    color: #0984e3;
     transform: rotate(180deg);
 }
 
@@ -254,11 +279,71 @@ body {
     to { transform: rotate(360deg); }
 }
 
+/* 2시간 예보 */
+.weather-forecast {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.forecast-title {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    opacity: 0.8;
+    text-align: center;
+    color: #666;
+}
+
+.forecast-items {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+}
+
+.forecast-item {
+    background: rgba(116, 185, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px 8px;
+    text-align: center;
+    flex: 1;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(116, 185, 255, 0.2);
+}
+
+.forecast-time {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.forecast-icon {
+    font-size: 1.5rem;
+    margin: 5px 0;
+}
+
+.forecast-temp {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #4a90e2;
+}
+
 /* 모바일 최적화 */
 @media (max-width: 768px) {
+    .profile-card {
+        min-height: 120px !important;
+        padding: 12px !important;
+    }
+    
+    .profile-stats-compact {
+        font-size: 0.8rem;
+        margin-top: 6px;
+    }
+    
     .weather-container {
         padding: 15px;
-        margin: 0 -5px 15px -5px;
+        margin: 15px 0;
     }
     
     .weather-icon {
@@ -282,6 +367,18 @@ body {
         width: 40px;
         height: 40px;
         font-size: 1rem;
+    }
+    
+    .forecast-items {
+        gap: 10px;
+    }
+    
+    .forecast-item {
+        padding: 10px 6px;
+    }
+    
+    .forecast-icon {
+        font-size: 1.3rem;
     }
 }
 
