@@ -847,11 +847,6 @@ async function updatePlansList() {
             </div>
         `;
         
-        // 계획 개수 표시 업데이트
-        const plansCount = document.getElementById('plans-count');
-        if (plansCount) {
-            plansCount.textContent = '0개 계획';
-        }
         return;
     }
     
@@ -872,22 +867,11 @@ async function updatePlansList() {
             </div>
         `;
         
-        // 계획 개수 표시 업데이트 (필터링된 개수)
-        const plansCount = document.getElementById('plans-count');
-        if (plansCount) {
-            plansCount.textContent = '0개 계획';
-        }
         return;
     }
     
-    // 계획 개수 표시 업데이트 (필터링된 개수)
-    const plansCount = document.getElementById('plans-count');
-    if (plansCount) {
-        plansCount.textContent = `${activePlans.length}개 계획`;
-    }
-    
-    // 최신순으로 정렬 (생성일 기준 내림차순)
-    activePlans.sort((a, b) => (b.id || 0) - (a.id || 0));
+    // 시작일 기준 오름차순 정렬 (빠른 날짜부터)
+    activePlans.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
     
     // 정렬된 계획들 표시
     activePlans.forEach(plan => {
@@ -1154,10 +1138,15 @@ async function navigateMonth(direction) {
     await updateCalendar();
 }
 
-// 캘린더 그리드 생성
+// 캘린더 그리드 생성 (성능 최적화)
 async function createCalendarGrid(year, month) {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // 한 번에 모든 데이터 가져오기 (성능 최적화)
+    const data = await loadData();
+    const profileData = data.profiles[currentProfile];
+    const exercisePlans = profileData?.exercisePlans || [];
     
     let html = `
         <style>
@@ -1183,11 +1172,22 @@ async function createCalendarGrid(year, month) {
         html += '<div class="calendar-day empty"></div>';
     }
     
-    // 날짜 추가
+    // 날짜 추가 (성능 최적화: 반복문에서 async 호출 제거)
     for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const isCompleted = await isDateCompleted(dateStr);
-        const hasExercise = await hasExerciseOnDate(dateStr);
+        
+        // 해당 날짜의 운동 상태 빠르게 확인
+        let isCompleted = false;
+        let hasExercise = false;
+        
+        for (const plan of exercisePlans) {
+            if (dateStr >= plan.start_date && dateStr <= plan.end_date) {
+                hasExercise = true;
+                if (plan.completed_dates && plan.completed_dates.includes(dateStr)) {
+                    isCompleted = true;
+                }
+            }
+        }
         
         // 선택된 계획의 기간인지 확인
         const isSelectedPlan = selectedPlan && 
@@ -1326,23 +1326,58 @@ async function showDateExerciseInfo(dateStr) {
         `;
     });
     
-    modal.innerHTML = `
-        <div style="background: white; border-radius: 15px; padding: 20px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #333; margin: 0 0 5px 0;">📅 ${dateStr}</h3>
-                <p style="color: #666; margin: 0; font-size: 0.9rem;">${plansForDate.length}개 운동 계획</p>
-            </div>
-            ${plansHtml}
-            <div style="text-align: center; margin-top: 20px;">
-                <button onclick="this.closest('div').parentElement.remove()" 
-                        style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
-                    닫기
-                </button>
-            </div>
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white; 
+        border-radius: 15px; 
+        padding: 20px; 
+        max-width: 400px; 
+        width: 90%; 
+        max-height: 80vh; 
+        overflow-y: auto;
+        position: relative;
+    `;
+    
+    modalContent.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="color: #333; margin: 0 0 5px 0;">📅 ${dateStr}</h3>
+            <p style="color: #666; margin: 0; font-size: 0.9rem;">${plansForDate.length}개 운동 계획</p>
+        </div>
+        ${plansHtml}
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="close-modal-btn" 
+                    style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                닫기
+            </button>
         </div>
     `;
     
+    modal.appendChild(modalContent);
     document.body.appendChild(modal);
+    
+    // 닫기 이벤트 리스너 추가
+    const closeBtn = modalContent.querySelector('#close-modal-btn');
+    const closeModal = () => {
+        modal.remove();
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    
+    // 배경 클릭시 닫기
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+    
+    // ESC 키로 닫기
+    const handleKeyPress = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', handleKeyPress);
+        }
+    };
+    document.addEventListener('keydown', handleKeyPress);
 }
 
 // 특정 날짜의 운동 완료/취소 토글 (팝업에서 사용)
