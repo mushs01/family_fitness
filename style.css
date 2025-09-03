@@ -192,11 +192,11 @@ body {
     }
     
     .rank-badge {
-        width: 36px !important;
-        height: 36px !important;
-        font-size: 1.8rem !important;
-        top: -8px !important;
-        left: -8px !important;
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 0.7rem !important;
+        top: -5px !important;
+        left: -5px !important;
     }
     
     .grade-badge {
@@ -1048,5 +1048,545 @@ body {
     .grade-badge {
         font-size: 0.45rem;
         padding: 1px 3px;
+    }
+}
+
+/* 가족랭킹 제목 컨테이너 */
+.ranking-title-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.detail-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+}
+
+.detail-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.detail-btn:active {
+    transform: translateY(0);
+}
+
+/* 월별 랭킹 페이지 스타일 */
+.monthly-ranking-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.month-selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px 20px;
+    border-radius: 15px;
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.month-nav {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.month-nav:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+#selected-month-title {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.monthly-stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stats-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(255, 234, 167, 0.3);
+}
+
+.stats-info {
+    flex: 1;
+}
+
+.stats-label {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.stats-value {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #2d3748;
+}
+
+.monthly-ranking-list, .monthly-chart, .monthly-details {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.ranking-header, .chart-header, .details-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.ranking-header h4, .chart-header h4, .details-header h4 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 1.2rem;
+}
+
+.ranking-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.monthly-ranking-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+    transition: all 0.3s ease;
+}
+
+.monthly-ranking-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.monthly-rank-position {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-right: 15px;
+}
+
+.monthly-rank-position.rank-1 {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #333;
+}
+
+.monthly-rank-position.rank-2 {
+    background: linear-gradient(135deg, #c0c0c0 0%, #e5e5e5 100%);
+    color: #333;
+}
+
+.monthly-rank-position.rank-3 {
+    background: linear-gradient(135deg, #cd7f32 0%, #deb887 100%);
+    color: white;
+}
+
+.monthly-rank-position.rank-other {
+    background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 100%);
+    color: white;
+}
+
+.monthly-member-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 12px;
+}
+
+.monthly-member-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.monthly-member-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #2d3748;
+}
+
+.monthly-member-stats {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.monthly-score {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.monthly-exercises {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.chart-content {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 350px;
+    color: #666;
+}
+
+/* 차트 컨트롤 */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.chart-range-btn {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chart-range-btn:hover {
+    background: #f3f4f6;
+}
+
+.chart-range-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* 랭킹 차트 컨테이너 */
+.ranking-chart-container {
+    display: flex;
+    height: 280px;
+    margin-bottom: 20px;
+}
+
+.chart-y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px 10px 40px 0;
+    width: 50px;
+}
+
+.y-axis-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4a5568;
+    text-align: center;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.y-axis-label[data-rank="1"] { color: #ffd700; }
+.y-axis-label[data-rank="2"] { color: #c0c0c0; }
+.y-axis-label[data-rank="3"] { color: #cd7f32; }
+.y-axis-label[data-rank="4"] { color: #9ca3af; }
+
+.chart-area {
+    flex: 1;
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.ranking-chart-svg {
+    width: 100%;
+    height: 240px;
+    position: absolute;
+    top: 20px;
+    left: 0;
+}
+
+.chart-x-axis {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border-top: 1px solid #e5e7eb;
+}
+
+.x-axis-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* 차트 선 스타일 */
+.chart-line {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.chart-line.member-아빠 { stroke: #3b82f6; }
+.chart-line.member-엄마 { stroke: #ef4444; }
+.chart-line.member-주환 { stroke: #10b981; }
+.chart-line.member-태환 { stroke: #f59e0b; }
+
+.chart-point {
+    fill: white;
+    stroke-width: 2;
+    r: 4;
+}
+
+.chart-point.member-아빠 { stroke: #3b82f6; }
+.chart-point.member-엄마 { stroke: #ef4444; }
+.chart-point.member-주환 { stroke: #10b981; }
+.chart-point.member-태환 { stroke: #f59e0b; }
+
+.chart-point:hover {
+    r: 6;
+    stroke-width: 3;
+}
+
+/* 차트 범례 */
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.legend-color {
+    width: 16px;
+    height: 3px;
+    border-radius: 2px;
+}
+
+.legend-color.member-아빠 { background: #3b82f6; }
+.legend-color.member-엄마 { background: #ef4444; }
+.legend-color.member-주환 { background: #10b981; }
+.legend-color.member-태환 { background: #f59e0b; }
+
+/* 그리드 라인 */
+.chart-grid-line {
+    stroke: #f3f4f6;
+    stroke-width: 1;
+    stroke-dasharray: 2,2;
+}
+
+.details-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #667eea;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.detail-value {
+    color: #667eea;
+    font-weight: 500;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .monthly-ranking-container {
+        padding: 15px;
+    }
+    
+    .month-selector {
+        padding: 12px 15px;
+    }
+    
+    #selected-month-title {
+        font-size: 1.1rem;
+    }
+    
+    .monthly-stats-summary {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .stats-card {
+        padding: 15px;
+    }
+    
+    .stats-icon {
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+    }
+    
+    .monthly-ranking-item {
+        padding: 12px;
+    }
+    
+    .monthly-member-stats {
+        gap: 15px;
+    }
+    
+    .monthly-score {
+        font-size: 1.1rem;
+    }
+    
+    .ranking-title-container {
+        gap: 8px;
+    }
+    
+    .detail-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
+    }
+    
+    /* 차트 모바일 반응형 */
+    .chart-content {
+        padding: 15px;
+        min-height: 300px;
+    }
+    
+    .ranking-chart-container {
+        height: 240px;
+    }
+    
+    .chart-y-axis {
+        width: 40px;
+        padding: 15px 8px 30px 0;
+    }
+    
+    .y-axis-label {
+        font-size: 0.8rem;
+    }
+    
+    .ranking-chart-svg {
+        height: 200px;
+        top: 15px;
+    }
+    
+    .chart-x-axis {
+        height: 30px;
+        padding: 0 15px;
+    }
+    
+    .x-axis-label {
+        font-size: 0.7rem;
+    }
+    
+    .chart-legend {
+        gap: 15px;
+    }
+    
+    .legend-item {
+        font-size: 0.8rem;
+    }
+    
+    .chart-controls {
+        gap: 6px;
+    }
+    
+    .chart-range-btn {
+        padding: 5px 10px;
+        font-size: 0.8rem;
     }
 }
