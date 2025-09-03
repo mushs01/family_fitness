@@ -37,7 +37,10 @@
     <div id="profile-screen" class="screen">
         <div class="header">
             <div class="family-ranking">
-                <h3>🏆 이번달 가족랭킹</h3>
+                <div class="ranking-title-container">
+                    <button id="monthly-detail-btn" class="detail-btn" title="월별 상세 랭킹 보기">📊</button>
+                    <h3 id="family-ranking-title">🏆 이번달 가족랭킹</h3>
+                </div>
                 <div id="ranking-list" class="ranking-list">
                     <!-- 랭킹이 여기에 동적으로 표시됩니다 -->
                 </div>
@@ -146,6 +149,95 @@
                 </div>
                 <div id="calendar-grid" class="calendar-grid">
                     <!-- 캘린더가 여기 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 월별 랭킹 화면 -->
+    <div id="monthly-ranking-screen" class="screen">
+        <div class="header">
+            <button class="back-btn" id="monthly-ranking-back">
+                <span class="back-icon">🏡</span>
+                <span class="back-text">홈으로</span>
+            </button>
+            <div class="header-title">
+                <h2>📊 월별 가족랭킹</h2>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="monthly-ranking-container">
+                <div class="month-selector">
+                    <button class="month-nav" data-nav="prev">◀</button>
+                    <h3 id="selected-month-title">2025년 1월</h3>
+                    <button class="month-nav" data-nav="next">▶</button>
+                </div>
+
+                <div class="monthly-stats-summary">
+                    <div class="stats-card">
+                        <div class="stats-icon">🏆</div>
+                        <div class="stats-info">
+                            <div class="stats-label">이달의 챔피언</div>
+                            <div class="stats-value" id="monthly-champion">-</div>
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-icon">🎯</div>
+                        <div class="stats-info">
+                            <div class="stats-label">총 운동 횟수</div>
+                            <div class="stats-value" id="total-exercises">0회</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="monthly-ranking-list">
+                    <div class="ranking-header">
+                        <h4>🏅 월별 순위</h4>
+                    </div>
+                    <div id="monthly-ranking-items" class="ranking-items">
+                        <!-- 월별 랭킹 아이템들이 여기 표시됩니다 -->
+                    </div>
+                </div>
+
+                <div class="monthly-chart">
+                    <div class="chart-header">
+                        <h4>📈 월별 랭킹 추이</h4>
+                        <div class="chart-controls">
+                            <button id="chart-range-6" class="chart-range-btn active">6개월</button>
+                            <button id="chart-range-12" class="chart-range-btn">12개월</button>
+                        </div>
+                    </div>
+                    <div id="monthly-chart-content" class="chart-content">
+                        <div class="ranking-chart-container">
+                            <div class="chart-y-axis">
+                                <div class="y-axis-label" data-rank="1">1위</div>
+                                <div class="y-axis-label" data-rank="2">2위</div>
+                                <div class="y-axis-label" data-rank="3">3위</div>
+                                <div class="y-axis-label" data-rank="4">4위</div>
+                            </div>
+                            <div class="chart-area">
+                                <svg id="ranking-chart-svg" class="ranking-chart-svg">
+                                    <!-- 그래프 선들이 여기에 그려집니다 -->
+                                </svg>
+                                <div class="chart-x-axis" id="chart-x-axis">
+                                    <!-- 월 라벨들이 여기 표시됩니다 -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-legend" id="chart-legend">
+                            <!-- 범례가 여기 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="monthly-details">
+                    <div class="details-header">
+                        <h4>📋 운동 기록 상세</h4>
+                    </div>
+                    <div id="monthly-details-content" class="details-content">
+                        <!-- 상세 기록이 여기 표시됩니다 -->
+                    </div>
                 </div>
             </div>
         </div>
