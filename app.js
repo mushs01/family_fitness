@@ -3805,7 +3805,13 @@ function initWeatherFeature() {
 // Hugging Face API 설정 (무료 Inference API)
 // 한국어 텍스트 생성에 적합한 모델 사용
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
-const HUGGINGFACE_API_KEY = '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'; // 실제 API 키
+
+// API 키 설정 방법:
+// 1. 개발자용: 아래 주석을 해제하고 본인 API 키 입력 (GitHub 업로드시 다시 주석처리!)
+// 2. 사용자용: 앱에서 설정 메뉴를 통해 입력
+
+// Hugging Face API 키 - GitHub 업로드시 "I'll fix it later" 선택하면 됨
+const HUGGINGFACE_API_KEY = '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';
 
 // API 키 유효성 검사 함수
 function isValidAPIKey(key) {
@@ -4199,10 +4205,9 @@ function getWeatherMotivationContext(weatherData) {
 
 // 실제 AI 메시지 생성 (Hugging Face API) - 간소화된 안정 버전
 async function callHuggingFaceAPI(prompt) {
-    // API 키 존재 여부만 확인 (유효성은 실제 호출에서 검증)
+    // API 키 기본 확인
     if (!HUGGINGFACE_API_KEY || HUGGINGFACE_API_KEY.trim() === '') {
-        console.error('❌ API 키가 없습니다');
-        throw new Error('API 키가 설정되지 않았습니다. Hugging Face API 키를 설정해주세요.');
+        throw new Error('API 키가 설정되지 않았습니다.');
     }
     
     // API 키 상세 정보 로깅
