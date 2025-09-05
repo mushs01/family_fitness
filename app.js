@@ -422,9 +422,9 @@ function setupFirebaseSync() {
         .onSnapshot(async (doc) => {
             try {
                 // 문서가 존재하고, 대기 중인 쓰기가 없고, 현재 업데이트 중이 아닐 때만 처리
-                if (doc.exists && doc.metadata.hasPendingWrites === false && !isUpdatingFromFirebase) {
-                    console.log("🔄 Firebase에서 실시간 데이터 수신");
-                    const firebaseData = doc.data();
+            if (doc.exists && doc.metadata.hasPendingWrites === false && !isUpdatingFromFirebase) {
+                console.log("🔄 Firebase에서 실시간 데이터 수신");
+                const firebaseData = doc.data();
                     
                     // 현재 로컬 데이터와 비교
                     const localDataStr = localStorage.getItem(STORAGE_KEY);
@@ -440,30 +440,30 @@ function setupFirebaseSync() {
                     // Firebase 데이터가 더 최신이거나 같을 때만 병합
                     if (firebaseTimestamp >= localTimestamp) {
                         console.log('🔄 데이터 병합 시작 (Firebase 데이터가 더 최신)');
-                        
-                        // 로컬 데이터와 Firebase 데이터 병합
-                        const mergedData = await mergeDataSafely(firebaseData);
-                        
-                        // 로컬 저장소 업데이트
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
-                        
-                        // UI 업데이트 (Firebase 업데이트 중임을 표시)
-                        isUpdatingFromFirebase = true;
-                        
-                        // 현재 프로필이 있으면 UI 업데이트
-                        if (currentProfile) {
-                            await updatePlansList();
-                            await updateRanking();
+                
+                // 로컬 데이터와 Firebase 데이터 병합
+                const mergedData = await mergeDataSafely(firebaseData);
+                
+                // 로컬 저장소 업데이트
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
+                
+                // UI 업데이트 (Firebase 업데이트 중임을 표시)
+                isUpdatingFromFirebase = true;
+                
+                // 현재 프로필이 있으면 UI 업데이트
+                if (currentProfile) {
+                    await updatePlansList();
+                    await updateRanking();
                             await updateCurrentProfileInfo();
-                        } else {
-                            // 프로필 선택 화면에 있을 때도 업데이트
-                            await updateRanking();
-                            await updateProfileCards();
-                        }
-                        
+                } else {
+                    // 프로필 선택 화면에 있을 때도 업데이트
+                    await updateRanking();
+                    await updateProfileCards();
+                }
+                
                         // 플래그 해제
                         setTimeout(() => {
-                            isUpdatingFromFirebase = false;
+                isUpdatingFromFirebase = false;
                         }, 1500);
                         
                         showMessage("🔄 가족 데이터 동기화 완료", true);
@@ -3160,12 +3160,12 @@ async function saveData(data) {
             lastUpdated: new Date().toISOString()
         };
         
-        // 로컬에 백업 저장
+    // 로컬에 백업 저장
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataWithTimestamp));
         console.log('✅ 로컬 저장 완료');
-        
-        // Firebase에도 저장 시도
-        if (isFirebaseAvailable) {
+    
+    // Firebase에도 저장 시도
+    if (isFirebaseAvailable) {
             console.log('🔥 Firebase 저장 시도...');
             const success = await saveDataToFirebase(dataWithTimestamp);
             if (success) {
@@ -3805,11 +3805,19 @@ function initWeatherFeature() {
 // Hugging Face API 설정 (무료 Inference API)
 // 한국어 텍스트 생성에 적합한 모델 사용
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
-const HUGGINGFACE_API_KEY = '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'; // 실제 API 키
+const HUGGINGFACE_API_KEY = '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'; // 실제 API 키
 
 // API 키 유효성 검사 함수
 function isValidAPIKey(key) {
-    return key && key.startsWith('hf_') && key.length > 10;
+    const isValid = key && typeof key === 'string' && key.startsWith('hf_') && key.length > 20;
+    console.log('🔍 API 키 검사:', {
+        exists: !!key,
+        type: typeof key,
+        startsWithHf: key ? key.startsWith('hf_') : false,
+        length: key ? key.length : 0,
+        isValid: isValid
+    });
+    return isValid;
 }
 
 // 백업 모델들 (안정성 우선)
@@ -3818,6 +3826,29 @@ const BACKUP_MODELS = [
     'https://api-inference.huggingface.co/models/gpt2-medium',
     'https://api-inference.huggingface.co/models/microsoft/DialoGPT-small'
 ];
+
+// API 키 테스트 함수
+async function testAPIKey() {
+    try {
+        const response = await fetch('https://huggingface.co/api/whoami-v2', {
+            headers: {
+                'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ API 키 유효성 확인됨:', data.name);
+            return true;
+        } else {
+            console.error('❌ API 키 유효성 검사 실패:', response.status);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ API 키 테스트 중 오류:', error);
+        return false;
+    }
+}
 
 // 대안 무료 AI API들 (Hugging Face 실패 시 사용)
 const ALTERNATIVE_AI_APIS = [
@@ -3844,8 +3875,8 @@ async function analyzeExerciseData(profileName) {
             console.log('❌ 데이터가 없습니다.');
             return null;
         }
-        
-        const now = new Date();
+    
+    const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
         // 이번 주 시작 (일요일)
@@ -3874,8 +3905,8 @@ async function analyzeExerciseData(profileName) {
         const profileData = data.profiles[profileName];
         if (!profileData || !profileData.exercisePlans) {
             console.log(`❌ ${profileName} 프로필의 운동 계획이 없습니다.`);
-            return {
-                profileName,
+    return {
+        profileName,
                 thisWeek: 0,
                 lastWeek: 0,
                 thisMonth: 0,
@@ -4054,7 +4085,7 @@ function generateMotivationPrompt(data, weatherData) {
         trendContext = `지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동이 줄었습니다.`;
     } else if (thisWeek > 0) {
         trendContext = `지난주와 이번주 모두 ${thisWeek}회 운동으로 일정하게 유지하고 있습니다.`;
-    } else {
+                } else {
         trendContext = `이번주와 지난주 모두 운동을 하지 않았습니다.`;
     }
     
@@ -4069,7 +4100,7 @@ function generateMotivationPrompt(data, weatherData) {
         familyContext = `가족 평균(${familyAverage}회)보다 많은 ${thisWeek}회 운동했습니다.`;
     } else if (thisWeek === familyAverage) {
         familyContext = `가족 평균(${familyAverage}회)과 같은 ${thisWeek}회 운동했습니다.`;
-    } else {
+            } else {
         familyContext = `가족 평균(${familyAverage}회)보다 적은 ${thisWeek}회 운동했습니다.`;
     }
     
@@ -4168,17 +4199,31 @@ function getWeatherMotivationContext(weatherData) {
 
 // 실제 AI 메시지 생성 (Hugging Face API) - 간소화된 안정 버전
 async function callHuggingFaceAPI(prompt) {
-    // API 키 유효성 검사
-    if (!isValidAPIKey(HUGGINGFACE_API_KEY)) {
-        console.error('❌ 유효하지 않은 API 키');
-        throw new Error('API 키가 유효하지 않습니다. 올바른 Hugging Face API 키를 설정해주세요.');
+    // API 키 존재 여부만 확인 (유효성은 실제 호출에서 검증)
+    if (!HUGGINGFACE_API_KEY || HUGGINGFACE_API_KEY.trim() === '') {
+        console.error('❌ API 키가 없습니다');
+        throw new Error('API 키가 설정되지 않았습니다. Hugging Face API 키를 설정해주세요.');
+    }
+    
+    // API 키 상세 정보 로깅
+    console.log('🔑 API 키 정보:', {
+        length: HUGGINGFACE_API_KEY.length,
+        prefix: HUGGINGFACE_API_KEY.substring(0, 10),
+        isValidFormat: isValidAPIKey(HUGGINGFACE_API_KEY)
+    });
+    
+    // API 키 유효성 테스트
+    console.log('🔍 API 키 유효성 테스트 중...');
+    const isKeyValid = await testAPIKey();
+    if (!isKeyValid) {
+        throw new Error('API 키가 유효하지 않습니다. Hugging Face에서 새로운 키를 발급받아주세요.');
     }
     
     console.log('🤖 Hugging Face AI API 호출 시작...');
     console.log('📝 프롬프트:', prompt.substring(0, 100) + '...');
     
-    // 간단하고 명확한 한국어 프롬프트
-    const simplePrompt = `운동 동기부여 메시지를 한국어로 30자 이내로 작성: ${prompt.split('40자')[0].trim()}`;
+    // 간단하고 명확한 한국어 프롬프트 - 더 단순화
+    const simplePrompt = `한국어로 운동 격려 메시지: 화이팅!`;
     
     try {
         const requestBody = {
@@ -4222,7 +4267,7 @@ async function callHuggingFaceAPI(prompt) {
                 throw new Error('API 사용 한도를 초과했습니다. 잠시 후 다시 시도해주세요.');
             } else if (response.status === 503) {
                 throw new Error('AI 모델이 로딩 중입니다. 잠시 후 다시 시도해주세요.');
-            } else {
+    } else {
                 throw new Error(`API 호출 실패 (${response.status}): ${response.statusText}`);
             }
         }
@@ -4693,7 +4738,7 @@ async function generateMotivationMessage() {
             
             if (hasExerciseHistory) {
                 // 운동 이력이 있는 경우 - AI 프롬프트 생성
-                const prompt = generateMotivationPrompt(exerciseData, weatherData);
+            const prompt = generateMotivationPrompt(exerciseData, weatherData);
                 console.log(`🤖 ${currentProfile}님 맞춤 AI 프롬프트 (운동+날씨):`, prompt);
                 
                 // API 키 확인으로 실제 AI 사용 여부 판단
@@ -4714,7 +4759,7 @@ async function generateMotivationMessage() {
                 
                 if (result.isRealAI) {
                     console.log(`✅ 실제 AI로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
-                } else {
+        } else {
                     console.log(`✅ 스마트 메시지 조합으로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
                 }
             } else {
