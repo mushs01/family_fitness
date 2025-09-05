@@ -3855,28 +3855,7 @@ const BACKUP_MODELS = [
     'https://api-inference.huggingface.co/models/microsoft/DialoGPT-small'
 ];
 
-// API 키 테스트 함수
-async function testAPIKey() {
-    try {
-        const response = await fetch('https://huggingface.co/api/whoami-v2', {
-            headers: {
-                'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ API 키 유효성 확인됨:', data.name);
-            return true;
-        } else {
-            console.error('❌ API 키 유효성 검사 실패:', response.status);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ API 키 테스트 중 오류:', error);
-        return false;
-    }
-}
+// 백업 메시지 시스템 제거됨 - AI API만 사용
 
 // 대안 무료 AI API들 (Hugging Face 실패 시 사용)
 const ALTERNATIVE_AI_APIS = [
@@ -4239,28 +4218,22 @@ async function callHuggingFaceAPI(prompt) {
         isValidFormat: isValidAPIKey(HUGGINGFACE_API_KEY)
     });
     
-    // API 키 유효성 테스트
-    console.log('🔍 API 키 유효성 테스트 중...');
-    const isKeyValid = await testAPIKey();
-    if (!isKeyValid) {
-        throw new Error('API 키가 유효하지 않습니다. Hugging Face에서 새로운 키를 발급받아주세요.');
-    }
-    
     console.log('🤖 Hugging Face AI API 호출 시작...');
-    console.log('📝 프롬프트:', prompt.substring(0, 100) + '...');
+    console.log('📝 원본 프롬프트:', prompt.substring(0, 100) + '...');
     
-    // 간단하고 명확한 한국어 프롬프트 - 더 단순화
-    const simplePrompt = `한국어로 운동 격려 메시지: 화이팅!`;
+    // 실제 프롬프트를 사용하되 더 명확하게 구성
+    const simplePrompt = prompt.length > 100 ? 
+        `운동 동기부여 메시지를 한국어로 30자 이내로: ${prompt.split('40자')[0].trim()}` : 
+        `운동 격려 메시지를 한국어로 30자 이내로 작성해주세요: 오늘도 화이팅!`;
     
     try {
         const requestBody = {
             inputs: simplePrompt,
             parameters: {
-                max_new_tokens: 40,
-                temperature: 0.8,
+                max_new_tokens: 30,
+                temperature: 0.7,
                 do_sample: true,
-                top_p: 0.9,
-                repetition_penalty: 1.2
+                top_p: 0.8
             },
             options: {
                 wait_for_model: true,
@@ -4270,14 +4243,21 @@ async function callHuggingFaceAPI(prompt) {
         
         console.log('📤 API 요청:', JSON.stringify(requestBody, null, 2));
         
+        // 타임아웃 설정 (15초)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
         const response = await fetch(HUGGINGFACE_API_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         console.log('📥 API 응답 상태:', response.status, response.statusText);
         
@@ -4327,6 +4307,11 @@ async function callHuggingFaceAPI(prompt) {
         
     } catch (error) {
         console.error('❌ AI API 호출 중 오류:', error);
+        
+        // 타임아웃 오류
+        if (error.name === 'AbortError') {
+            throw new Error('AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        }
         
         // 네트워크 오류 감지
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -4778,17 +4763,12 @@ async function generateMotivationMessage() {
                     return;
                 }
                 
-                // AI 메시지 생성 (실제 AI 또는 스마트 조합)
+                // AI 메시지 생성 (실제 AI만)
                 const result = await callHuggingFaceAPI(prompt);
                 
                 // 메시지 표시 (AI 활용 여부에 따라 다르게 표시)
                 updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
-                
-                if (result.isRealAI) {
-                    console.log(`✅ 실제 AI로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
-        } else {
-                    console.log(`✅ 스마트 메시지 조합으로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
-                }
+                console.log(`✅ ${currentProfile}님 AI 동기부여 메시지 생성 완료:`, result.message);
             } else {
                 // 운동 이력이 없는 경우 - AI 시작 격려 메시지
                 console.log(`📝 ${currentProfile}님 운동 시작 격려 메시지 생성`);
@@ -4804,7 +4784,6 @@ async function generateMotivationMessage() {
                     
                     const result = await callHuggingFaceAPI(startPrompt);
                     updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
-                    
                     console.log(`✅ ${currentProfile}님 운동 시작 격려 메시지 생성 완료:`, result.message);
                 } else {
                     messageElement.textContent = 'AI API 키가 설정되지 않았습니다. 설정을 확인해주세요.';
