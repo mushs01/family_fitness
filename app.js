@@ -3803,8 +3803,8 @@ function initWeatherFeature() {
 // ================================
 
 // Hugging Face API 설정 (무료 Inference API)
-// 한국어 텍스트 생성에 적합한 모델 사용
-const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
+// 안정적인 텍스트 생성 모델 사용
+const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
 
 // API 키 설정 방법 (GitHub 업로드 시 키가 무효화되는 문제 해결)
 // 방법 1: 키를 분할해서 저장 (GitHub 감지 우회)
@@ -4205,43 +4205,50 @@ function getWeatherMotivationContext(weatherData) {
 }
 
 // 실제 AI 메시지 생성 (Hugging Face API) - 간소화된 안정 버전
-async function callHuggingFaceAPI(prompt) {
+async function callHuggingFaceAPI(prompt, debugElement = null) {
+    // 디버그 메시지 표시 함수
+    function showDebugLog(message, isError = false) {
+        console.log(message);
+        if (debugElement) {
+            const logColor = isError ? '#ff6b6b' : '#4facfe';
+            const currentContent = debugElement.innerHTML;
+            debugElement.innerHTML = currentContent + `
+                <div style="color: ${logColor}; font-size: 0.8em; margin: 2px 0; padding: 4px; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    ${message}
+                </div>
+            `;
+            debugElement.scrollTop = debugElement.scrollHeight;
+        }
+    }
+    
     // API 키 기본 확인
     if (!HUGGINGFACE_API_KEY || HUGGINGFACE_API_KEY.trim() === '') {
         throw new Error('API 키가 설정되지 않았습니다.');
     }
     
-    // API 키 상세 정보 로깅
-    console.log('🔑 API 키 정보:', {
-        length: HUGGINGFACE_API_KEY.length,
-        prefix: HUGGINGFACE_API_KEY.substring(0, 10),
-        isValidFormat: isValidAPIKey(HUGGINGFACE_API_KEY)
-    });
+    // API 키 상세 정보 표시
+    showDebugLog(`🔑 API 키 길이: ${HUGGINGFACE_API_KEY.length}자`);
+    showDebugLog(`🔑 API 키 형식: ${HUGGINGFACE_API_KEY.startsWith('hf_') ? '✅ 올바름' : '❌ 잘못됨'}`);
+    showDebugLog(`🤖 AI 모델: ${HUGGINGFACE_API_URL.split('/').pop()}`);
     
-    console.log('🤖 Hugging Face AI API 호출 시작...');
-    console.log('📝 원본 프롬프트:', prompt.substring(0, 100) + '...');
-    
-    // 실제 프롬프트를 사용하되 더 명확하게 구성
-    const simplePrompt = prompt.length > 100 ? 
-        `운동 동기부여 메시지를 한국어로 30자 이내로: ${prompt.split('40자')[0].trim()}` : 
-        `운동 격려 메시지를 한국어로 30자 이내로 작성해주세요: 오늘도 화이팅!`;
+    // 매우 간단한 프롬프트로 테스트
+    const testPrompt = "운동 격려 메시지: 화이팅!";
+    showDebugLog(`📝 테스트 프롬프트: ${testPrompt}`);
     
     try {
         const requestBody = {
-            inputs: simplePrompt,
+            inputs: testPrompt,
             parameters: {
-                max_new_tokens: 30,
-                temperature: 0.7,
-                do_sample: true,
-                top_p: 0.8
+                max_length: 50,
+                temperature: 0.8,
+                num_return_sequences: 1
             },
             options: {
-                wait_for_model: true,
-                use_cache: false
+                wait_for_model: true
             }
         };
         
-        console.log('📤 API 요청:', JSON.stringify(requestBody, null, 2));
+        showDebugLog(`📤 API 요청 전송 중...`);
         
         // 타임아웃 설정 (15초)
         const controller = new AbortController();
@@ -4259,66 +4266,93 @@ async function callHuggingFaceAPI(prompt) {
         
         clearTimeout(timeoutId);
         
-        console.log('📥 API 응답 상태:', response.status, response.statusText);
+        showDebugLog(`📥 API 응답: ${response.status} ${response.statusText}`);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('🚫 API 오류:', errorText);
+            showDebugLog(`🚫 API 오류 응답: ${errorText}`, true);
             
             // 구체적인 오류 메시지
             if (response.status === 401) {
+                showDebugLog('❌ 401: API 키 인증 실패', true);
                 throw new Error('API 키 인증에 실패했습니다. 키를 확인해주세요.');
             } else if (response.status === 403) {
+                showDebugLog('❌ 403: API 접근 거부', true);
                 throw new Error('API 접근이 거부되었습니다. 권한을 확인해주세요.');
             } else if (response.status === 429) {
+                showDebugLog('❌ 429: API 사용 한도 초과', true);
                 throw new Error('API 사용 한도를 초과했습니다. 잠시 후 다시 시도해주세요.');
             } else if (response.status === 503) {
+                showDebugLog('❌ 503: AI 모델 로딩 중', true);
                 throw new Error('AI 모델이 로딩 중입니다. 잠시 후 다시 시도해주세요.');
-    } else {
+            } else {
+                showDebugLog(`❌ ${response.status}: ${response.statusText}`, true);
                 throw new Error(`API 호출 실패 (${response.status}): ${response.statusText}`);
             }
         }
         
         const result = await response.json();
-        console.log('📋 AI 응답 결과:', result);
+        showDebugLog(`📋 API 응답 받음 (${Array.isArray(result) ? '배열' : '객체'})`);
         
         // 응답에서 텍스트 추출
         let generatedText = '';
         if (Array.isArray(result) && result[0]) {
-            generatedText = result[0].generated_text || '';
+            if (result[0].generated_text) {
+                generatedText = result[0].generated_text;
+                showDebugLog(`✅ 텍스트 추출: 배열[0].generated_text`);
+            } else if (result[0].text) {
+                generatedText = result[0].text;
+                showDebugLog(`✅ 텍스트 추출: 배열[0].text`);
+            } else {
+                showDebugLog(`❌ 배열[0]에서 텍스트 필드 없음: ${Object.keys(result[0]).join(', ')}`, true);
+            }
         } else if (result.generated_text) {
             generatedText = result.generated_text;
+            showDebugLog(`✅ 텍스트 추출: result.generated_text`);
+        } else if (result.text) {
+            generatedText = result.text;
+            showDebugLog(`✅ 텍스트 추출: result.text`);
+        } else {
+            showDebugLog(`❌ 텍스트 필드 없음: ${Object.keys(result).join(', ')}`, true);
         }
         
         if (!generatedText) {
-            throw new Error('AI가 텍스트를 생성하지 못했습니다.');
+            showDebugLog(`❌ AI 응답에서 텍스트를 찾을 수 없음`, true);
+            throw new Error(`AI 응답에서 텍스트를 찾을 수 없습니다.`);
         }
+        
+        showDebugLog(`🔧 원본 텍스트: "${generatedText.substring(0, 100)}${generatedText.length > 100 ? '...' : ''}"`);
         
         // 메시지 정리
-        let cleanMessage = cleanAIMessage(generatedText, simplePrompt);
+        let cleanMessage = cleanAIMessage(generatedText, testPrompt);
+        showDebugLog(`🧹 정리된 메시지: "${cleanMessage}"`);
         
         // 최소 길이 확인
-        if (!cleanMessage || cleanMessage.length < 5) {
-            throw new Error('AI 응답이 너무 짧습니다.');
+        if (!cleanMessage || cleanMessage.length < 3) {
+            showDebugLog(`⚠️ 메시지가 너무 짧음. 원본에서 50자 사용`);
+            cleanMessage = generatedText.substring(0, 50);
         }
         
-        console.log('✅ AI 메시지 생성 성공:', cleanMessage);
+        showDebugLog(`✅ 최종 AI 메시지: "${cleanMessage}"`);
         return { message: cleanMessage, isRealAI: true };
         
     } catch (error) {
-        console.error('❌ AI API 호출 중 오류:', error);
+        showDebugLog(`❌ 오류 발생: ${error.message}`, true);
         
         // 타임아웃 오류
         if (error.name === 'AbortError') {
+            showDebugLog('⏰ 15초 타임아웃 초과', true);
             throw new Error('AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
         }
         
         // 네트워크 오류 감지
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            showDebugLog('🌐 네트워크 연결 문제', true);
             throw new Error('네트워크 연결을 확인해주세요. 인터넷에 연결되어 있는지 확인하세요.');
         }
         
         // 다른 오류는 그대로 전달
+        showDebugLog(`🔍 오류 타입: ${error.name}`, true);
         throw error;
     }
 }
@@ -4763,8 +4797,16 @@ async function generateMotivationMessage() {
                     return;
                 }
                 
-                // AI 메시지 생성 (실제 AI만)
-                const result = await callHuggingFaceAPI(prompt);
+                // AI 메시지 생성 (실제 AI만) - 디버그 모드
+                messageElement.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+                        <div style="font-weight: bold; margin-bottom: 8px;">🔍 AI 메시지 생성 과정:</div>
+                        <div id="debug-logs"></div>
+                    </div>
+                `;
+                
+                const debugElement = document.getElementById('debug-logs');
+                const result = await callHuggingFaceAPI(prompt, debugElement);
                 
                 // 메시지 표시 (AI 활용 여부에 따라 다르게 표시)
                 updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
@@ -4777,12 +4819,19 @@ async function generateMotivationMessage() {
                 const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY';
                 
                 if (hasRealAI) {
-                    messageElement.textContent = `${currentProfile}님을 위한 운동 시작 격려 메시지를 AI가 생성하고 있습니다...`;
-                    
                     // 운동 시작을 위한 특별 프롬프트 생성
                     const startPrompt = generateMotivationPrompt(exerciseData, weatherData);
                     
-                    const result = await callHuggingFaceAPI(startPrompt);
+                    // AI 메시지 생성 (실제 AI만) - 디버그 모드
+                    messageElement.innerHTML = `
+                        <div style="background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+                            <div style="font-weight: bold; margin-bottom: 8px;">🔍 AI 메시지 생성 과정:</div>
+                            <div id="debug-logs-start"></div>
+                        </div>
+                    `;
+                    
+                    const debugElement = document.getElementById('debug-logs-start');
+                    const result = await callHuggingFaceAPI(startPrompt, debugElement);
                     updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
                     console.log(`✅ ${currentProfile}님 운동 시작 격려 메시지 생성 완료:`, result.message);
                 } else {
