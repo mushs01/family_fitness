@@ -3996,52 +3996,162 @@ async function analyzeExerciseData(profileName) {
     }
 }
 
-// AI 프롬프트 생성
+// AI 프롬프트 생성 - 개선된 개인별 맞춤 버전
 function generateMotivationPrompt(data, weatherData) {
-    if (!data) return '';
+    if (!data) {
+        console.warn('❌ AI 프롬프트 생성: 데이터가 없습니다.');
+        return '';
+    }
     
-    const { profileName, thisWeek, lastWeek, thisMonth, familyAverage, trend, isAboveAverage } = data;
+    console.log('🤖 AI 프롬프트 생성 시작:', data);
     
-    let situationContext = '';
-    if (trend > 0) {
-        situationContext = `${profileName}는 지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동을 더 많이 했습니다.`;
+    const { 
+        profileName, 
+        thisWeek, 
+        lastWeek, 
+        thisMonth, 
+        recentSevenDays,
+        totalExercises,
+        exerciseTypes,
+        familyAverage, 
+        familyData,
+        trend, 
+        isAboveAverage,
+        daysSinceLastExercise,
+        lastExerciseDate,
+        hasExerciseHistory
+    } = data;
+    
+    // 운동 이력이 없는 경우
+    if (!hasExerciseHistory) {
+        const weatherContext = getWeatherMotivationContext(weatherData);
+        const prompt = `한국어로 답변해주세요. ${profileName}님이 운동을 시작하려고 합니다. ${weatherContext} 운동을 시작하는 ${profileName}님에게 따뜻하고 격려하는 동기부여 메시지를 40자 이내로 생성해주세요.`;
+        console.log('🌱 운동 시작 격려 프롬프트 생성:', prompt);
+        return prompt;
+    }
+    
+    // 운동 트렌드 분석
+    let trendContext = '';
+    if (trend > 2) {
+        trendContext = `지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동을 크게 늘렸습니다.`;
+    } else if (trend > 0) {
+        trendContext = `지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동을 늘렸습니다.`;
+    } else if (trend < -2) {
+        trendContext = `지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동이 많이 줄었습니다.`;
     } else if (trend < 0) {
-        situationContext = `${profileName}는 지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동이 줄었습니다.`;
+        trendContext = `지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동이 줄었습니다.`;
+    } else if (thisWeek > 0) {
+        trendContext = `지난주와 이번주 모두 ${thisWeek}회 운동으로 일정하게 유지하고 있습니다.`;
     } else {
-        situationContext = `${profileName}는 지난주와 이번주 운동 횟수가 같습니다(${thisWeek}회).`;
+        trendContext = `이번주와 지난주 모두 운동을 하지 않았습니다.`;
     }
     
-    const familyContext = isAboveAverage 
-        ? `가족 평균(${familyAverage}회)보다 많이 운동하고 있습니다.`
-        : `가족 평균(${familyAverage}회)보다 적게 운동하고 있습니다.`;
-    
-    // 날씨 상황 추가
-    let weatherContext = '';
-    if (weatherData) {
-        const { temperature, condition, description, humidity, feelsLike } = weatherData;
-        
-        // 날씨별 운동 조언
-        if (condition === 'Rain' || condition === 'Drizzle') {
-            weatherContext = `오늘은 비가 와서(${description}) 실내 운동이 좋겠어요.`;
-        } else if (condition === 'Snow') {
-            weatherContext = `오늘은 눈이 와서(${description}) 실내에서 운동하시길 추천해요.`;
-        } else if (temperature >= 30) {
-            weatherContext = `오늘은 더워서(${temperature}°C, 체감 ${feelsLike}°C) 시원한 시간대나 실내 운동이 좋겠어요.`;
-        } else if (temperature <= 5) {
-            weatherContext = `오늘은 추워서(${temperature}°C, 체감 ${feelsLike}°C) 충분한 준비운동 후 운동하세요.`;
-        } else if (condition === 'Clear') {
-            weatherContext = `오늘은 날씨가 맑아서(${temperature}°C) 야외 운동하기 좋은 날이에요.`;
-        } else {
-            weatherContext = `현재 날씨는 ${description}(${temperature}°C)입니다.`;
-        }
+    // 가족 비교 분석
+    const familyRank = getFamilyRank(profileName, familyData);
+    let familyContext = '';
+    if (familyRank === 1) {
+        familyContext = `가족 중 1등으로 ${thisWeek}회 운동해서 모범이 되고 있습니다.`;
+    } else if (familyRank === 2) {
+        familyContext = `가족 중 2등으로 ${thisWeek}회 운동했습니다.`;
+    } else if (isAboveAverage) {
+        familyContext = `가족 평균(${familyAverage}회)보다 많은 ${thisWeek}회 운동했습니다.`;
+    } else if (thisWeek === familyAverage) {
+        familyContext = `가족 평균(${familyAverage}회)과 같은 ${thisWeek}회 운동했습니다.`;
+    } else {
+        familyContext = `가족 평균(${familyAverage}회)보다 적은 ${thisWeek}회 운동했습니다.`;
     }
     
-    // AI가 더 자연스럽게 생성할 수 있도록 간단하고 명확한 프롬프트 구성
-    const contextPrompt = `${profileName}의 운동 상황: ${situationContext} ${familyContext} 이번달 ${thisMonth}회 운동했습니다.`;
-    const weatherPrompt = weatherContext ? ` 날씨 상황: ${weatherContext}` : '';
-    const requestPrompt = `\n\n위 정보를 바탕으로 ${profileName}에게 따뜻하고 격려하는 운동 동기부여 메시지를 한국어로 40자 이내로 작성해주세요. 친근하고 응원하는 톤으로 말해주세요:`;
+    // 운동 패턴 분석
+    let exercisePatternContext = '';
+    if (daysSinceLastExercise === 0) {
+        exercisePatternContext = `오늘 운동을 완료했습니다.`;
+    } else if (daysSinceLastExercise === 1) {
+        exercisePatternContext = `어제 운동을 했고, 꾸준히 이어가고 있습니다.`;
+    } else if (daysSinceLastExercise <= 3) {
+        exercisePatternContext = `${daysSinceLastExercise}일 전에 운동했고, 규칙적으로 하고 있습니다.`;
+    } else if (daysSinceLastExercise <= 7) {
+        exercisePatternContext = `${daysSinceLastExercise}일 전에 마지막 운동을 했습니다.`;
+    } else {
+        exercisePatternContext = `${daysSinceLastExercise}일째 운동을 쉬고 있습니다.`;
+    }
     
-    return contextPrompt + weatherPrompt + requestPrompt;
+    // 운동 종류 다양성
+    let exerciseVarietyContext = '';
+    if (exerciseTypes.length >= 3) {
+        exerciseVarietyContext = `${exerciseTypes.join(', ')} 등 다양한 운동을 하고 있습니다.`;
+    } else if (exerciseTypes.length === 2) {
+        exerciseVarietyContext = `${exerciseTypes.join('과 ')} 운동을 하고 있습니다.`;
+    } else if (exerciseTypes.length === 1) {
+        exerciseVarietyContext = `주로 ${exerciseTypes[0]} 운동을 하고 있습니다.`;
+    }
+    
+    // 날씨 맞춤 조언
+    const weatherContext = getWeatherMotivationContext(weatherData);
+    
+    // 월별 성과
+    const monthlyContext = thisMonth > 15 ? 
+        `이번달 ${thisMonth}회로 매우 활발히 운동하고 있습니다.` :
+        thisMonth > 8 ?
+        `이번달 ${thisMonth}회 운동했습니다.` :
+        `이번달 ${thisMonth}회 운동으로 더 늘릴 수 있을 것 같습니다.`;
+    
+    // 상황에 맞는 프롬프트 조합
+    let contextParts = [];
+    
+    // 핵심 상황 (필수)
+    contextParts.push(trendContext);
+    contextParts.push(familyContext);
+    
+    // 추가 맥락 (선택적 - 중요도순)
+    if (exercisePatternContext) contextParts.push(exercisePatternContext);
+    if (monthlyContext) contextParts.push(monthlyContext);
+    if (exerciseVarietyContext) contextParts.push(exerciseVarietyContext);
+    if (weatherContext) contextParts.push(weatherContext);
+    
+    const contextString = contextParts.join(' ');
+    
+    const prompt = `한국어로 답변해주세요. ${profileName}님의 운동 현황: ${contextString} 이런 상황의 ${profileName}님에게 개인별 맞춤 운동 동기부여 메시지를 40자 이내로 생성해주세요. 친근하고 응원하는 톤으로 말해주세요.`;
+    
+    console.log('🤖 개선된 AI 프롬프트 생성 완료:', prompt);
+    return prompt;
+}
+
+// 가족 내 순위 계산
+function getFamilyRank(profileName, familyData) {
+    const familyArray = Object.entries(familyData)
+        .sort(([,a], [,b]) => b - a)
+        .map(([name]) => name);
+    
+    return familyArray.indexOf(profileName) + 1;
+}
+
+// 날씨 기반 동기부여 맥락 생성
+function getWeatherMotivationContext(weatherData) {
+    if (!weatherData || !weatherData.condition) return '';
+    
+    const condition = weatherData.condition.toLowerCase();
+    const temperature = weatherData.temperature;
+    const description = weatherData.description || '';
+    
+    if (condition.includes('rain') || condition.includes('storm')) {
+        return '비가 와서 실내 운동이나 홈트레이닝을 추천합니다.';
+    } else if (condition.includes('snow')) {
+        return '눈이 와서 안전한 실내 운동을 권합니다.';
+    } else if (temperature <= 0) {
+        return '날씨가 매우 추워서 충분한 워밍업이 필요합니다.';
+    } else if (temperature < 10) {
+        return '쌀쌀한 날씨라 준비운동을 충분히 하세요.';
+    } else if (temperature > 30) {
+        return '더운 날씨라 수분 보충과 그늘에서 운동하세요.';
+    } else if (temperature > 25) {
+        return '따뜻한 날씨로 야외 운동하기 좋습니다.';
+    } else if (condition.includes('clear') || condition.includes('sunny')) {
+        return '맑은 날씨로 야외 활동하기 완벽합니다.';
+    } else if (condition.includes('cloud')) {
+        return '구름 낀 날씨로 운동하기 적당합니다.';
+    }
+    
+    return `${description} 날씨입니다.`;
 }
 
 // 실제 AI 메시지 생성 (Hugging Face API 우선) - 개선된 버전
@@ -4110,10 +4220,8 @@ async function callHuggingFaceAPI(prompt) {
                 throw new Error(`AI API 응답 오류: ${response.status}`);
             }
         } catch (error) {
-            console.log('❌ 실제 AI API 호출 실패, 메시지 조합 모드로 전환:', error.message);
-            // AI 실패시 백업으로 조합 방식 사용
-            const mockMessage = generateMockMotivationMessage(prompt);
-            return { message: mockMessage, isRealAI: false };
+            console.log('❌ 실제 AI API 호출 실패:', error.message);
+            throw error; // 에러를 상위로 전달하여 적절히 처리
         }
     } else {
         console.log('⚠️ AI API 키가 설정되지 않음 - 스마트 메시지 조합 모드 사용');
@@ -4460,12 +4568,20 @@ async function generateMotivationMessage() {
         robotIcon?.classList.add('ai-thinking');
         
         // 운동 데이터 분석
+        console.log(`🔍 ${currentProfile} 운동 데이터 분석 시작...`);
         const exerciseData = await analyzeExerciseData(currentProfile);
-        console.log(`📊 ${currentProfile} 운동 데이터 분석:`, exerciseData);
+        console.log(`📊 ${currentProfile} 운동 데이터 분석 결과:`, exerciseData);
         
         // 현재 날씨 데이터 가져오기
+        console.log('🌤️ 날씨 데이터 가져오기 시작...');
         const weatherData = await getCurrentWeatherForAI();
-        console.log('🌤️ 현재 날씨 데이터:', weatherData);
+        console.log('🌤️ 현재 날씨 데이터 결과:', weatherData);
+        
+        // API 키 상태 확인
+        console.log('🔑 API 키 상태 확인:');
+        console.log('  - HUGGINGFACE_API_KEY 존재:', !!HUGGINGFACE_API_KEY);
+        console.log('  - API 키 값:', HUGGINGFACE_API_KEY ? `${HUGGINGFACE_API_KEY.substring(0, 10)}...` : 'null');
+        console.log('  - 기본값과 다름:', HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY');
         
         if (exerciseData) {
             // 운동 데이터가 있는지 확인 (모든 값이 0이면 운동 이력 없음)
@@ -4477,7 +4593,7 @@ async function generateMotivationMessage() {
                 console.log(`🤖 ${currentProfile}님 맞춤 AI 프롬프트 (운동+날씨):`, prompt);
                 
                 // API 키 확인으로 실제 AI 사용 여부 판단
-                const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'your_huggingface_api_key_here';
+                const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY';
                 
                 if (hasRealAI) {
                     messageElement.textContent = `${currentProfile}님의 운동 기록과 날씨를 AI가 분석하여 맞춤 메시지를 생성하고 있습니다...`;
@@ -4502,7 +4618,7 @@ async function generateMotivationMessage() {
                 console.log(`📝 ${currentProfile}님 운동 시작 격려 메시지 생성`);
                 
                 // API 키 확인
-                const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'your_huggingface_api_key_here';
+                const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY';
                 
                 if (hasRealAI) {
                     messageElement.textContent = `${currentProfile}님을 위한 운동 시작 격려 메시지를 AI가 생성하고 있습니다...`;
@@ -4526,7 +4642,17 @@ async function generateMotivationMessage() {
         
     } catch (error) {
         console.error('❌ 동기부여 메시지 생성 실패:', error);
-        updateMessageWithAIIndicator(messageElement, `${currentProfile}님, 오늘도 건강한 하루 만들어봐요! 화이팅! 💪`, false);
+        
+        // 오류 유형에 따른 다른 메시지 표시
+        if (error.message && error.message.includes('API')) {
+            messageElement.textContent = `AI API 오류가 발생했습니다. 잠시 후 다시 시도해주세요.`;
+        } else if (error.message && error.message.includes('network')) {
+            messageElement.textContent = `네트워크 연결을 확인하고 다시 시도해주세요.`;
+        } else {
+            messageElement.textContent = `AI 메시지 생성에 실패했습니다. API 키 설정을 확인해주세요.`;
+        }
+        
+        console.log('🔧 해결 방법: AI_MOTIVATION_SETUP.md 파일을 참고하여 Hugging Face API 키를 설정해주세요.');
     } finally {
         // 로딩 상태 해제 (로봇 아이콘 회전 정지)
         refreshBtn?.classList.remove('loading');
