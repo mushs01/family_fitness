@@ -3803,8 +3803,8 @@ function initWeatherFeature() {
 // ================================
 
 // Hugging Face API 설정 (무료 Inference API)
-// 안정적인 텍스트 생성 모델 사용
-const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
+// 가장 안정적이고 빠른 모델 사용
+const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
 
 // API 키 설정 방법 (GitHub 업로드 시 키가 무효화되는 문제 해결)
 // 방법 1: 키를 분할해서 저장 (GitHub 감지 우회)
@@ -4231,28 +4231,51 @@ async function callHuggingFaceAPI(prompt, debugElement = null) {
     showDebugLog(`🔑 API 키 형식: ${HUGGINGFACE_API_KEY.startsWith('hf_') ? '✅ 올바름' : '❌ 잘못됨'}`);
     showDebugLog(`🤖 AI 모델: ${HUGGINGFACE_API_URL.split('/').pop()}`);
     
+    // 모델 상태 확인
+    try {
+        showDebugLog(`🔍 모델 상태 확인 중...`);
+        const statusResponse = await fetch(HUGGINGFACE_API_URL, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`
+            }
+        });
+        
+        if (statusResponse.ok) {
+            showDebugLog(`✅ 모델 접근 가능 (${statusResponse.status})`);
+        } else {
+            showDebugLog(`⚠️ 모델 상태: ${statusResponse.status} ${statusResponse.statusText}`, true);
+        }
+    } catch (statusError) {
+        showDebugLog(`⚠️ 모델 상태 확인 실패: ${statusError.message}`, true);
+    }
+    
     // 매우 간단한 프롬프트로 테스트
     const testPrompt = "운동 격려 메시지: 화이팅!";
     showDebugLog(`📝 테스트 프롬프트: ${testPrompt}`);
     
     try {
+        // 가장 간단한 요청 파라미터
         const requestBody = {
             inputs: testPrompt,
             parameters: {
-                max_length: 50,
-                temperature: 0.8,
-                num_return_sequences: 1
+                max_new_tokens: 20,
+                temperature: 0.7
             },
             options: {
-                wait_for_model: true
+                wait_for_model: true,
+                use_cache: true
             }
         };
         
+        showDebugLog(`🔧 요청 파라미터: max_new_tokens=20, temperature=0.7`);
+        
         showDebugLog(`📤 API 요청 전송 중...`);
         
-        // 타임아웃 설정 (15초)
+        // 타임아웃 설정 (30초로 증가)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        showDebugLog(`⏰ 타임아웃: 30초 설정`);
         
         const response = await fetch(HUGGINGFACE_API_URL, {
             method: 'POST',
@@ -4341,8 +4364,9 @@ async function callHuggingFaceAPI(prompt, debugElement = null) {
         
         // 타임아웃 오류
         if (error.name === 'AbortError') {
-            showDebugLog('⏰ 15초 타임아웃 초과', true);
-            throw new Error('AI 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+            showDebugLog('⏰ 30초 타임아웃 초과 - AI 모델이 응답하지 않음', true);
+            showDebugLog('💡 해결방법: 1) 잠시 후 재시도, 2) 네트워크 확인, 3) API 키 상태 확인', true);
+            throw new Error('AI 모델이 30초 내에 응답하지 않았습니다. 모델이 로딩 중이거나 서버가 과부하일 수 있습니다.');
         }
         
         // 네트워크 오류 감지
