@@ -1551,8 +1551,9 @@ if (typeof window !== 'undefined') {
 
 
 
-// 랭킹 업데이트
+// 랭킹 업데이트 - 개선된 버전
 async function updateRanking() {
+    console.log('🏆 랭킹 업데이트 시작...');
     
     const data = await loadData();
     const rankings = [];
@@ -1561,11 +1562,19 @@ async function updateRanking() {
     const profiles = ['아빠', '엄마', '주환', '태환'];
     for (const profile of profiles) {
         const score = calculateProfileScore(profile, data.profiles[profile]);
-        const profileData = await getProfileData(profile);
+        
+        // 계급 계산 (updateProfileCards와 동일한 로직)
+        let grade = '⛓️ 노예';
+        if (score >= 400) grade = '✨ 신';
+        else if (score >= 300) grade = '👑 왕';
+        else if (score >= 200) grade = '🛡️ 백작';
+        else if (score >= 120) grade = '🏇 기사';
+        else if (score >= 50) grade = '🌾 농민';
+        
         rankings.push({ 
             name: profile, 
             score: score,
-            grade: profileData.grade 
+            grade: grade 
         });
     }
     
@@ -1657,21 +1666,33 @@ async function updateRanking() {
     });
 }
 
-// 프로필 카드 정보 업데이트 
+// 프로필 카드 정보 업데이트 - 개선된 버전
 async function updateProfileCards() {
     const profiles = ['아빠', '엄마', '주환', '태환'];
     const data = await loadData();
     
-    // 랭킹 계산
+    console.log('🔄 프로필 카드 업데이트 시작...');
+    
+    // 각 프로필별 점수 계산
     const rankings = [];
     for (const profile of profiles) {
         const score = calculateProfileScore(profile, data.profiles[profile]);
-        const profileData = await getProfileData(profile);
+        
+        // 계급 계산
+        let grade = '⛓️ 노예';
+        if (score >= 400) grade = '✨ 신';
+        else if (score >= 300) grade = '👑 왕';
+        else if (score >= 200) grade = '🛡️ 백작';
+        else if (score >= 120) grade = '🏇 기사';
+        else if (score >= 50) grade = '🌾 농민';
+        
         rankings.push({ 
             name: profile, 
             score: score,
-            grade: profileData.grade 
+            grade: grade 
         });
+        
+        console.log(`📊 ${profile}: ${score}점, ${grade}`);
     }
     
     rankings.sort((a, b) => b.score - a.score);
@@ -1697,8 +1718,8 @@ async function updateProfileCards() {
     });
     
     // 프로필 카드 업데이트
-    for (const profileName of profiles) {
-        const profileData = await getProfileData(profileName);
+    for (const ranking of rankings) {
+        const profileName = ranking.name;
         const profileCard = document.querySelector(`[data-profile="${profileName}"]`);
         
         if (profileCard) {
@@ -1706,8 +1727,9 @@ async function updateProfileCards() {
             const scoreElement = profileCard.querySelector('.score');
             const rankBadge = profileCard.querySelector('.rank-badge');
             
-            if (gradeElement) gradeElement.textContent = profileData.grade;
-            if (scoreElement) scoreElement.textContent = `${profileData.score}점`;
+            // 계산된 점수와 계급 직접 사용
+            if (gradeElement) gradeElement.textContent = ranking.grade;
+            if (scoreElement) scoreElement.textContent = `${ranking.score}점`;
             if (rankBadge) {
                 const rank = rankMap[profileName] || 1;
                 let trophyIcon = '';
@@ -1723,57 +1745,58 @@ async function updateProfileCards() {
                 rankBadge.textContent = trophyIcon;
                 rankBadge.style.fontSize = '2.4rem';
             }
+            
+            console.log(`✅ ${profileName} 카드 업데이트: ${ranking.score}점, ${ranking.grade}, ${rankMap[profileName]}등`);
+        } else {
+            console.warn(`⚠️ ${profileName} 프로필 카드를 찾을 수 없습니다.`);
         }
     }
+    
+    console.log('✅ 프로필 카드 업데이트 완료');
 }
 
-// 프로필 점수 계산 (현재 월 기준)
+// 프로필 점수 계산 - 개선된 버전 (전체 운동 이력 기반)
 function calculateProfileScore(profileName, profileData) {
-    if (!profileData) return 0;
+    if (!profileData) {
+        console.log(`❌ ${profileName}: 프로필 데이터 없음`);
+        return 0;
+    }
     
-    const currentMonth = getCurrentMonthKey();
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    // 현재 월의 활성 계획들만 사용
     let completionScore = 0;
     let planScore = 0;
     
-    // 현재 운영 중인 계획들 (전체 exercisePlans에서)
+    // 모든 운동 계획에서 완료된 운동들의 점수 계산
     if (profileData.exercisePlans && Array.isArray(profileData.exercisePlans)) {
-        const activePlans = profileData.exercisePlans.filter(plan => {
-            // 현재 날짜 기준으로 아직 종료되지 않은 계획들
-            return plan.end_date >= todayStr;
-        });
+        console.log(`📊 ${profileName}: 총 ${profileData.exercisePlans.length}개 운동 계획 확인`);
         
-        activePlans.forEach(plan => {
-            // 이번 달에 완료된 운동만 점수 계산
+        profileData.exercisePlans.forEach(plan => {
+            // 완료된 운동 횟수만큼 점수 획득
             if (plan.completed_dates && Array.isArray(plan.completed_dates)) {
-                const thisMonthCompletions = plan.completed_dates.filter(date => {
-                    return date.startsWith(currentMonth.slice(0, 7)); // YYYY-MM 형식으로 비교
-                });
-                completionScore += thisMonthCompletions.length * getExerciseScore(plan.exercise_type);
+                const completedCount = plan.completed_dates.length;
+                const exerciseScore = getExerciseScore(plan.exercise_type);
+                const planCompletionScore = completedCount * exerciseScore;
+                
+                completionScore += planCompletionScore;
+                
+                console.log(`  📝 ${plan.exercise_type}: ${completedCount}회 완료 × ${exerciseScore}점 = ${planCompletionScore}점`);
             }
+            
+            // 계획 보너스 점수 (계획 1개당 1점)
+            planScore += 1;
         });
         
-        // 계획 보너스 점수 (활성 계획 1개당 1점)
-        planScore = activePlans.length;
+        console.log(`📊 ${profileName} 점수 계산 상세:`);
+        console.log(`  - 완료 점수: ${completionScore}점`);
+        console.log(`  - 계획 보너스: ${planScore}점`);
+        console.log(`  - 총합: ${completionScore + planScore}점`);
+    } else {
+        console.log(`❌ ${profileName}: 운동 계획 배열이 없음 또는 잘못된 형태`);
     }
     
-    // 월별 데이터에서 추가 계획 점수 (하위 호환성)
-    const monthlyData = getMonthlyData(profileData, currentMonth);
-    if (monthlyData.exercisePlans && Array.isArray(monthlyData.exercisePlans)) {
-        // 중복 제거: 이미 활성 계획에 포함되지 않은 추가 계획들만
-        const additionalPlans = monthlyData.exercisePlans.filter(monthlyPlan => {
-            const isInActivePlans = profileData.exercisePlans && 
-                profileData.exercisePlans.some(activePlan => activePlan.id === monthlyPlan.id);
-            return !isInActivePlans;
-        });
-        planScore += additionalPlans.length;
-    }
+    const totalScore = completionScore + planScore;
+    console.log(`🏆 ${profileName} 최종 점수: ${totalScore}점`);
     
-    console.log(`${profileName} 점수 계산: 완료점수(${completionScore}) + 계획점수(${planScore}) = ${completionScore + planScore}`);
-    
-    return completionScore + planScore;
+    return totalScore;
 }
 
 // 현재 월 키 생성 (예: "2025-01")
@@ -3203,7 +3226,16 @@ function showAppInfo() {
 // ================================
 
 // OpenWeatherMap API 키 (무료 계정용)
-const WEATHER_API_KEY = 'YOUR_API_KEY'; // 실제 사용 시 본인의 API 키로 교체하세요
+// 🔑 무료 API 키 설정 방법:
+// 1. https://openweathermap.org/api 에서 무료 계정 생성 (신용카드 불필요)
+// 2. API Keys 메뉴에서 키 복사
+// 3. 아래 'YOUR_API_KEY'를 실제 키로 교체
+// 
+// 💰 무료 플랜 혜택:
+// - 월 1,000회 호출 (하루 33회, 가족 앱 사용량 충분)
+// - 실시간 날씨 + 지역명 조회 모두 포함
+// - ✨ "화성시, 경기도" 수준까지 정확한 지역명 가능!
+const WEATHER_API_KEY = 'b5265909342f0823ecdf710393a1dd04'; // OpenWeatherMap API 키 적용됨
 
 // 날씨 아이콘 매핑
 const weatherIcons = {
@@ -3628,69 +3660,103 @@ const ALTERNATIVE_AI_APIS = [
     }
 ];
 
-// 운동 데이터 분석 함수
-function analyzeExerciseData(profileName) {
-    if (!exercisePlan || !currentProfile) return null;
+// 운동 데이터 분석 함수 - 수정된 버전
+async function analyzeExerciseData(profileName) {
+    if (!profileName) return null;
     
-    const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
-    // 현재 프로필의 운동 기록 필터링
-    const userPlans = exercisePlan.filter(plan => plan.profile === profileName);
-    
-    // 이번 주 운동 횟수
-    const thisWeekExercises = userPlans.filter(plan => {
-        const completedDates = plan.completedDates || [];
-        return completedDates.some(dateStr => {
-            const date = new Date(dateStr);
-            return date >= oneWeekAgo && date <= now;
-        });
-    }).length;
-    
-    // 지난 주 운동 횟수
-    const lastWeekExercises = userPlans.filter(plan => {
-        const completedDates = plan.completedDates || [];
-        return completedDates.some(dateStr => {
-            const date = new Date(dateStr);
-            return date >= twoWeeksAgo && date < oneWeekAgo;
-        });
-    }).length;
-    
-    // 이번 달 운동 횟수
-    const thisMonthExercises = userPlans.filter(plan => {
-        const completedDates = plan.completedDates || [];
-        return completedDates.some(dateStr => {
-            const date = new Date(dateStr);
-            return date >= oneMonthAgo && date <= now;
-        });
-    }).length;
-    
-    // 가족 전체 평균 계산
-    const allProfiles = ['아빠', '엄마', '주환', '태환'];
-    const familyThisWeek = allProfiles.map(profile => {
-        const profilePlans = exercisePlan.filter(plan => plan.profile === profile);
-        return profilePlans.filter(plan => {
-            const completedDates = plan.completedDates || [];
-            return completedDates.some(dateStr => {
+    try {
+        // 실제 저장된 데이터 로드
+        const data = await loadData();
+        if (!data || !data.profiles) {
+            console.log('❌ 데이터가 없습니다.');
+            return null;
+        }
+        
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        // 현재 프로필의 운동 기록
+        const profileData = data.profiles[profileName];
+        if (!profileData || !profileData.exercisePlans) {
+            console.log(`❌ ${profileName} 프로필의 운동 계획이 없습니다.`);
+            return null;
+        }
+        
+        const userPlans = profileData.exercisePlans || [];
+        console.log(`📊 ${profileName} 총 운동 계획 수:`, userPlans.length);
+        
+        // 이번 주 운동 완료 횟수 계산
+        let thisWeekExercises = 0;
+        userPlans.forEach(plan => {
+            const completedDates = plan.completed_dates || [];
+            const thisWeekCompletions = completedDates.filter(dateStr => {
                 const date = new Date(dateStr);
                 return date >= oneWeekAgo && date <= now;
             });
-        }).length;
-    });
-    
-    const familyAverage = familyThisWeek.reduce((sum, count) => sum + count, 0) / allProfiles.length;
-    
-    return {
-        profileName,
-        thisWeek: thisWeekExercises,
-        lastWeek: lastWeekExercises,
-        thisMonth: thisMonthExercises,
-        familyAverage: Math.round(familyAverage * 10) / 10,
-        trend: thisWeekExercises - lastWeekExercises,
-        isAboveAverage: thisWeekExercises > familyAverage
-    };
+            thisWeekExercises += thisWeekCompletions.length;
+        });
+        
+        // 지난 주 운동 완료 횟수 계산
+        let lastWeekExercises = 0;
+        userPlans.forEach(plan => {
+            const completedDates = plan.completed_dates || [];
+            const lastWeekCompletions = completedDates.filter(dateStr => {
+                const date = new Date(dateStr);
+                return date >= twoWeeksAgo && date < oneWeekAgo;
+            });
+            lastWeekExercises += lastWeekCompletions.length;
+        });
+        
+        // 이번 달 운동 완료 횟수 계산
+        let thisMonthExercises = 0;
+        userPlans.forEach(plan => {
+            const completedDates = plan.completed_dates || [];
+            const thisMonthCompletions = completedDates.filter(dateStr => {
+                const date = new Date(dateStr);
+                return date >= oneMonthAgo && date <= now;
+            });
+            thisMonthExercises += thisMonthCompletions.length;
+        });
+        
+        // 가족 전체 평균 계산
+        const allProfiles = ['아빠', '엄마', '주환', '태환'];
+        const familyThisWeek = allProfiles.map(profile => {
+            const familyProfileData = data.profiles[profile];
+            if (!familyProfileData || !familyProfileData.exercisePlans) return 0;
+            
+            let profileWeekExercises = 0;
+            familyProfileData.exercisePlans.forEach(plan => {
+                const completedDates = plan.completed_dates || [];
+                const weekCompletions = completedDates.filter(dateStr => {
+                    const date = new Date(dateStr);
+                    return date >= oneWeekAgo && date <= now;
+                });
+                profileWeekExercises += weekCompletions.length;
+            });
+            return profileWeekExercises;
+        });
+        
+        const familyAverage = familyThisWeek.reduce((sum, count) => sum + count, 0) / allProfiles.length;
+        
+        const result = {
+            profileName,
+            thisWeek: thisWeekExercises,
+            lastWeek: lastWeekExercises,
+            thisMonth: thisMonthExercises,
+            familyAverage: Math.round(familyAverage * 10) / 10,
+            trend: thisWeekExercises - lastWeekExercises,
+            isAboveAverage: thisWeekExercises > familyAverage
+        };
+        
+        console.log(`📊 ${profileName} 운동 분석 결과:`, result);
+        return result;
+        
+    } catch (error) {
+        console.error('❌ 운동 데이터 분석 중 오류:', error);
+        return null;
+    }
 }
 
 // AI 프롬프트 생성
@@ -3903,7 +3969,7 @@ function extractDataFromPrompt(prompt) {
     return data;
 }
 
-// 메시지 구성 요소 생성
+// 메시지 구성 요소 생성 - 개선된 버전
 function generateMessageComponents(data) {
     const components = {
         greeting: [],
@@ -3912,6 +3978,17 @@ function generateMessageComponents(data) {
         action: [],
         emoji: []
     };
+    
+    // 운동 데이터가 없거나 모든 값이 0인 경우 (운동 이력 없음)
+    if (!data || (data.thisWeek === 0 && data.lastWeek === 0 && data.thisMonth === 0)) {
+        return {
+            greeting: ["안녕하세요!", "좋은 하루예요!", "반가워요!"],
+            situation: ["아직 운동 기록이 없으시네요.", "새로운 시작이 기다리고 있어요!", "첫 걸음을 내딛어보세요!"],
+            encouragement: ["시작이 반이에요!", "작은 변화부터 시작해봐요!", "오늘부터 함께 시작해요!", "천리길도 한 걸음부터예요!"],
+            action: ["가벼운 산책부터 어떠세요?", "10분 스트레칭으로 시작해봐요!", "계단 오르기부터 도전해보세요!", "집 앞 한 바퀴 걸어보는 건 어떨까요?"],
+            emoji: ["🌱", "✨", "💪", "🚀", "🌟", "👍", "💫", "🎯"]
+        };
+    }
     
     // 인사말 생성
     const greetings = [
@@ -4119,12 +4196,13 @@ async function getCurrentWeatherForAI() {
     }
 }
 
-// 좌표로부터 대략적인 지역명 추정 (Reverse Geocoding 대체)
+// 좌표로부터 세부 지역명 가져오기 (Reverse Geocoding)
 async function getLocationNameFromCoords(lat, lon) {
     try {
-        // 실제 Reverse Geocoding API가 있다면 사용
+        // 🌍 OpenWeatherMap Reverse Geocoding API 사용 (API 키 필요)
         if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
-            // OpenWeatherMap의 Reverse Geocoding API 사용
+            console.log('🗺️ Reverse Geocoding API로 세부 지역명 조회 중...');
+            
             const response = await fetch(
                 `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${WEATHER_API_KEY}`
             );
@@ -4133,18 +4211,30 @@ async function getLocationNameFromCoords(lat, lon) {
                 const locationData = await response.json();
                 if (locationData && locationData.length > 0) {
                     const location = locationData[0];
-                    const locationName = location.local_names?.ko || location.name;
-                    const state = location.state;
-                    return state ? `${locationName}, ${state}` : locationName;
+                    console.log('🏘️ Reverse Geocoding 결과:', location);
+                    
+                    // 한국어 지역명 우선, 없으면 영어명 사용
+                    const cityName = location.local_names?.ko || location.name;
+                    const stateName = location.state;
+                    
+                    // "화성시, 경기도" 형태로 반환
+                    const fullLocationName = stateName ? `${cityName}, ${stateName}` : cityName;
+                    console.log(`✅ 세부 지역명 확인: ${fullLocationName}`);
+                    
+                    return fullLocationName;
                 }
+            } else {
+                console.warn('⚠️ Reverse Geocoding API 호출 실패:', response.status);
             }
+        } else {
+            console.log('🔑 API 키가 설정되지 않음 - 대략적 지역 추정 사용');
         }
         
         // API가 없거나 실패시 좌표 기반으로 대한민국 지역 추정
         return estimateKoreanLocation(lat, lon);
         
     } catch (error) {
-        console.warn('지역명 가져오기 실패:', error);
+        console.warn('❌ 지역명 가져오기 실패:', error);
         return `위도 ${lat.toFixed(2)}, 경도 ${lon.toFixed(2)}`;
     }
 }
@@ -4269,7 +4359,7 @@ async function generateMotivationMessage() {
         robotIcon?.classList.add('ai-thinking');
         
         // 운동 데이터 분석
-        const exerciseData = analyzeExerciseData(currentProfile);
+        const exerciseData = await analyzeExerciseData(currentProfile);
         console.log(`📊 ${currentProfile} 운동 데이터 분석:`, exerciseData);
         
         // 현재 날씨 데이터 가져오기
@@ -4277,33 +4367,52 @@ async function generateMotivationMessage() {
         console.log('🌤️ 현재 날씨 데이터:', weatherData);
         
         if (exerciseData) {
-            // AI 프롬프트 생성 (개인별 운동 데이터 + 날씨 데이터)
-            const prompt = generateMotivationPrompt(exerciseData, weatherData);
-            console.log(`🤖 ${currentProfile}님 맞춤 AI 프롬프트 (운동+날씨):`, prompt);
+            // 운동 데이터가 있는지 확인 (모든 값이 0이면 운동 이력 없음)
+            const hasExerciseHistory = exerciseData.thisWeek > 0 || exerciseData.lastWeek > 0 || exerciseData.thisMonth > 0;
             
-            // API 키 확인으로 실제 AI 사용 여부 판단
-            const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'your_huggingface_api_key_here';
-            
-            if (hasRealAI) {
-                messageElement.textContent = `${currentProfile}님의 운동 기록과 날씨를 AI가 분석하여 맞춤 메시지를 생성하고 있습니다...`;
+            if (hasExerciseHistory) {
+                // 운동 이력이 있는 경우 - AI 프롬프트 생성
+                const prompt = generateMotivationPrompt(exerciseData, weatherData);
+                console.log(`🤖 ${currentProfile}님 맞춤 AI 프롬프트 (운동+날씨):`, prompt);
+                
+                // API 키 확인으로 실제 AI 사용 여부 판단
+                const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'your_huggingface_api_key_here';
+                
+                if (hasRealAI) {
+                    messageElement.textContent = `${currentProfile}님의 운동 기록과 날씨를 AI가 분석하여 맞춤 메시지를 생성하고 있습니다...`;
+                } else {
+                    messageElement.textContent = 'AI 메시지 생성을 준비중입니다...';
+                    // 메시지 조합 모드임을 명확히 표시하기 위한 추가 지연
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+                
+                // AI 메시지 생성 (실제 AI 또는 스마트 조합)
+                const result = await callHuggingFaceAPI(prompt);
+                
+                // 메시지 표시 (AI 활용 여부에 따라 다르게 표시)
+                updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
+                
+                if (result.isRealAI) {
+                    console.log(`✅ 실제 AI로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
+                } else {
+                    console.log(`✅ 스마트 메시지 조합으로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
+                }
             } else {
+                // 운동 이력이 없는 경우 - 시작 격려 메시지
+                console.log(`📝 ${currentProfile}님 운동 시작 격려 메시지 생성`);
                 messageElement.textContent = 'AI 메시지 생성을 준비중입니다...';
-                // 메시지 조합 모드임을 명확히 표시하기 위한 추가 지연
-                await new Promise(resolve => setTimeout(resolve, 1500));
-            }
-            
-            // AI 메시지 생성 (실제 AI 또는 스마트 조합)
-            const result = await callHuggingFaceAPI(prompt);
-            
-            // 메시지 표시 (AI 활용 여부에 따라 다르게 표시)
-            updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
-            
-            if (result.isRealAI) {
-                console.log(`✅ 실제 AI로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
-            } else {
-                console.log(`✅ 스마트 메시지 조합으로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 운동 시작을 위한 특별 프롬프트 생성
+                const startPrompt = `${currentProfile}는 아직 운동을 시작하지 않았습니다. 날씨: ${weatherData?.description || '좋음'}(${weatherData?.temperature || 20}°C). ${currentProfile}에게 운동 시작을 격려하는 따뜻한 메시지를 40자 이내로 작성해주세요.`;
+                
+                const result = await callHuggingFaceAPI(startPrompt);
+                updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
+                
+                console.log(`✅ ${currentProfile}님 운동 시작 격려 메시지 생성 완료:`, result.message);
             }
         } else {
+            // 데이터 분석 실패시
             messageElement.textContent = `${currentProfile}님, 운동 기록을 더 쌓으시면 개인 맞춤형 메시지를 드릴 수 있어요! 💪`;
         }
         
