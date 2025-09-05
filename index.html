@@ -14,6 +14,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="우리가족 운동관리">
     
+    <!-- API 설정 파일 (선택적 로드) -->
+    <script>
+        // 설정 파일이 있으면 로드, 없으면 무시
+        const configScript = document.createElement('script');
+        configScript.src = 'config.js';
+        configScript.onerror = () => console.log('⚠️ 설정 파일 없음 - 기본값 사용');
+        document.head.appendChild(configScript);
+    </script>
+    
     <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <!-- Add Firebase products that you want to use -->
