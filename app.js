@@ -35,7 +35,7 @@ try {
 // 로컬 스토리지 키
 const STORAGE_KEY = 'family_fitness_data';
 
-// PWA 캐시 강제 업데이트 (모바일 앱에서 중요)
+// PWA 캐시 강제 업데이트 (모바일 앱에서 중요) - 개선된 버전
 async function forceCacheUpdate() {
     console.log('🧹 강력한 캐시 정리 시작...');
     
@@ -56,6 +56,28 @@ async function forceCacheUpdate() {
         }
     }
     
+    // LocalStorage 캐시 데이터 정리 (Firebase 동기화 개선)
+    try {
+        const keys = Object.keys(localStorage);
+        const cacheKeys = keys.filter(key => 
+            key.includes('cache') || 
+            key.includes('timestamp') || 
+            key.includes('version')
+        );
+        
+        cacheKeys.forEach(key => {
+            localStorage.removeItem(key);
+            console.log('🗑️ LocalStorage 캐시 삭제:', key);
+        });
+        
+        // Firebase 동기화를 위한 강제 새로고침 플래그 설정
+        localStorage.setItem('force_firebase_sync', 'true');
+        console.log('🔄 Firebase 강제 동기화 플래그 설정');
+        
+    } catch (error) {
+        console.warn('⚠️ LocalStorage 정리 실패:', error);
+    }
+    
     // Service Worker 완전 재시작
     if ('serviceWorker' in navigator) {
         try {
@@ -66,15 +88,25 @@ async function forceCacheUpdate() {
                 console.log('❌ Service Worker 등록 해제됨');
             }
             
-            // 새로 등록
+            // 새로 등록 (지연 시간 단축)
             setTimeout(async () => {
                 try {
                     const newReg = await navigator.serviceWorker.register('./sw.js');
                     console.log('✅ Service Worker 새로 등록됨');
+                    
+                    // Service Worker 준비 완료 후 Firebase 동기화 강제 실행
+                    if (newReg.active) {
+                        console.log('🔥 Service Worker 활성화 후 Firebase 동기화 재시작');
+                        setTimeout(() => {
+                            if (isFirebaseAvailable) {
+                                setupFirebaseSync();
+                            }
+                        }, 2000);
+                    }
                 } catch (error) {
                     console.warn('⚠️ Service Worker 재등록 실패:', error);
                 }
-            }, 1000);
+            }, 500); // 1초에서 0.5초로 단축
             
         } catch (error) {
             console.warn('⚠️ Service Worker 처리 실패:', error);
@@ -86,6 +118,17 @@ async function forceCacheUpdate() {
     meta.httpEquiv = 'Cache-Control';
     meta.content = 'no-cache, no-store, must-revalidate';
     document.head.appendChild(meta);
+    
+    // 추가 캐시 무효화 헤더
+    const pragmaMeta = document.createElement('meta');
+    pragmaMeta.httpEquiv = 'Pragma';
+    pragmaMeta.content = 'no-cache';
+    document.head.appendChild(pragmaMeta);
+    
+    const expiresMeta = document.createElement('meta');
+    expiresMeta.httpEquiv = 'Expires';
+    expiresMeta.content = '0';
+    document.head.appendChild(expiresMeta);
     
     console.log('⏰ 캐시 버스팅 타임스탬프:', Date.now());
 }
@@ -365,46 +408,88 @@ async function initializeApp() {
     }
 }
 
-// Firebase 실시간 동기화 설정
+// Firebase 실시간 동기화 설정 - 개선된 버전
 function setupFirebaseSync() {
     if (!isFirebaseAvailable) {
         console.log("📱 로컬 모드로 동작");
         return;
     }
     
+    console.log('🔥 Firebase 실시간 리스너 설정 중...');
+    
     // Firestore 실시간 리스너 설정
     db.collection('families').doc(FAMILY_CODE)
         .onSnapshot(async (doc) => {
-            // 자신의 쓰기 작업으로 인한 업데이트는 무시
-            if (doc.exists && doc.metadata.hasPendingWrites === false && !isUpdatingFromFirebase) {
-                console.log("🔄 Firebase에서 실시간 데이터 수신");
-                const firebaseData = doc.data();
-                
-                // 로컬 데이터와 Firebase 데이터 병합
-                const mergedData = await mergeDataSafely(firebaseData);
-                
-                // 로컬 저장소 업데이트
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
-                
-                // UI 업데이트 (Firebase 업데이트 중임을 표시)
-                isUpdatingFromFirebase = true;
-                
-                // 현재 프로필이 있으면 UI 업데이트
-                if (currentProfile) {
-                    await updatePlansList();
-                    await updateRanking();
-                } else {
-                    // 프로필 선택 화면에 있을 때도 업데이트
-                    await updateRanking();
-                    await updateProfileCards();
+            try {
+                // 문서가 존재하고, 대기 중인 쓰기가 없고, 현재 업데이트 중이 아닐 때만 처리
+                if (doc.exists && doc.metadata.hasPendingWrites === false && !isUpdatingFromFirebase) {
+                    console.log("🔄 Firebase에서 실시간 데이터 수신");
+                    const firebaseData = doc.data();
+                    
+                    // 현재 로컬 데이터와 비교
+                    const localDataStr = localStorage.getItem(STORAGE_KEY);
+                    const localData = localDataStr ? JSON.parse(localDataStr) : null;
+                    
+                    // 타임스탬프 비교로 불필요한 업데이트 방지
+                    const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
+                    const localTimestamp = localData?.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
+                    
+                    console.log('Firebase 타임스탬프:', firebaseTimestamp);
+                    console.log('로컬 타임스탬프:', localTimestamp);
+                    
+                    // Firebase 데이터가 더 최신이거나 같을 때만 병합
+                    if (firebaseTimestamp >= localTimestamp) {
+                        console.log('🔄 데이터 병합 시작 (Firebase 데이터가 더 최신)');
+                        
+                        // 로컬 데이터와 Firebase 데이터 병합
+                        const mergedData = await mergeDataSafely(firebaseData);
+                        
+                        // 로컬 저장소 업데이트
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
+                        
+                        // UI 업데이트 (Firebase 업데이트 중임을 표시)
+                        isUpdatingFromFirebase = true;
+                        
+                        // 현재 프로필이 있으면 UI 업데이트
+                        if (currentProfile) {
+                            await updatePlansList();
+                            await updateRanking();
+                            await updateCurrentProfileInfo();
+                        } else {
+                            // 프로필 선택 화면에 있을 때도 업데이트
+                            await updateRanking();
+                            await updateProfileCards();
+                        }
+                        
+                        // 플래그 해제
+                        setTimeout(() => {
+                            isUpdatingFromFirebase = false;
+                        }, 1500);
+                        
+                        showMessage("🔄 가족 데이터 동기화 완료", true);
+                    } else {
+                        console.log('⏭️ 로컬 데이터가 더 최신이므로 병합 생략');
+                    }
+                } else if (!doc.exists) {
+                    console.log('📄 Firebase 문서가 존재하지 않음');
+                } else if (doc.metadata.hasPendingWrites) {
+                    console.log('⏳ 대기 중인 쓰기 작업이 있음 - 무시');
+                } else if (isUpdatingFromFirebase) {
+                    console.log('🔄 현재 업데이트 중 - 무시');
                 }
-                
+            } catch (error) {
+                console.error('❌ 실시간 동기화 처리 중 오류:', error);
                 isUpdatingFromFirebase = false;
-                showMessage("🔄 동기화 완료", true);
             }
         }, (error) => {
             console.warn("⚠️ Firebase 실시간 동기화 오류:", error);
             isUpdatingFromFirebase = false;
+            
+            // 연결 재시도 로직
+            setTimeout(() => {
+                console.log('🔄 Firebase 연결 재시도...');
+                setupFirebaseSync();
+            }, 10000);
         });
 }
 
@@ -2439,14 +2524,40 @@ async function saveDataToFirebase(data) {
     }
 }
 
-// 데이터 로드 (Firebase 우선, 로컬 백업)
+// 데이터 로드 (Firebase 우선, 로컬 백업) - 개선된 버전
 async function loadData() {
+    console.log('📊 데이터 로드 시작...');
+    
+    // 강제 동기화 플래그 확인
+    const forceSyncFlag = localStorage.getItem('force_firebase_sync');
+    if (forceSyncFlag === 'true') {
+        console.log('🔄 강제 Firebase 동기화 모드 활성화');
+        localStorage.removeItem('force_firebase_sync');
+    }
+    
     // Firebase에서 먼저 시도
     if (isFirebaseAvailable) {
+        console.log('🔥 Firebase에서 데이터 로드 시도...');
         const firebaseData = await loadDataFromFirebase();
         if (firebaseData) {
+            console.log('✅ Firebase 데이터 로드 성공');
+            
+            // 로컬 데이터와 병합 (강제 동기화가 아닌 경우)
+            if (forceSyncFlag !== 'true') {
+                const localDataStr = localStorage.getItem(STORAGE_KEY);
+                if (localDataStr) {
+                    console.log('🔄 Firebase와 로컬 데이터 병합 중...');
+                    const mergedData = await mergeDataSafely(firebaseData);
+                    return mergedData;
+                }
+            }
+            
             return firebaseData;
+        } else {
+            console.log('⚠️ Firebase 데이터 로드 실패');
         }
+    } else {
+        console.log('📱 Firebase 연결 불가 - 로컬 모드');
     }
     
     // Firebase 실패시 로컬에서 로드
@@ -2729,7 +2840,7 @@ async function loadData() {
     };
 }
 
-// 안전한 데이터 병합 (충돌 해결)
+// 안전한 데이터 병합 (충돌 해결) - 개선된 버전
 async function mergeDataSafely(firebaseData) {
     try {
         console.log('🔄 데이터 병합 시작...');
@@ -2752,6 +2863,13 @@ async function mergeDataSafely(firebaseData) {
         
         console.log('로컬과 Firebase 데이터 병합 중...');
         
+        // 타임스탬프 비교로 더 최신 데이터 우선 사용
+        const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
+        const localTimestamp = localData.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
+        
+        console.log('Firebase 타임스탬프:', firebaseTimestamp);
+        console.log('로컬 타임스탬프:', localTimestamp);
+        
         // 프로필별로 병합
         const mergedProfiles = {};
         const allProfiles = ['아빠', '엄마', '주환', '태환'];
@@ -2760,40 +2878,81 @@ async function mergeDataSafely(firebaseData) {
             const localProfile = localData.profiles?.[profileName] || { exercisePlans: [], monthlyData: {} };
             const firebaseProfile = firebaseData.profiles?.[profileName] || { exercisePlans: [], monthlyData: {} };
             
-            // 운동 계획 병합 (ID 기준으로 중복 제거)
+            // 운동 계획 병합 (ID 기준으로 중복 제거하되 completed_dates 병합)
             const allPlans = [...(localProfile.exercisePlans || []), ...(firebaseProfile.exercisePlans || [])];
-            const uniquePlans = [];
-            const seenIds = new Set();
+            const planMap = new Map();
             
-            // 최신 계획 우선 (높은 ID)
-            allPlans.sort((a, b) => (b.id || 0) - (a.id || 0));
-            
+            // ID별로 계획들을 그룹화하고 completed_dates 병합
             for (const plan of allPlans) {
-                if (!seenIds.has(plan.id)) {
-                    seenIds.add(plan.id);
-                    uniquePlans.push(plan);
+                const planId = plan.id;
+                if (!planMap.has(planId)) {
+                    planMap.set(planId, { ...plan, completed_dates: [...(plan.completed_dates || [])] });
+                } else {
+                    const existingPlan = planMap.get(planId);
+                    // completed_dates 병합 (중복 제거)
+                    const allCompletedDates = [
+                        ...(existingPlan.completed_dates || []),
+                        ...(plan.completed_dates || [])
+                    ];
+                    const uniqueCompletedDates = [...new Set(allCompletedDates)];
+                    
+                    // 더 최신 정보로 업데이트 (created_date 기준)
+                    const existingDate = new Date(existingPlan.created_date || 0);
+                    const currentDate = new Date(plan.created_date || 0);
+                    
+                    if (currentDate >= existingDate) {
+                        planMap.set(planId, {
+                            ...plan,
+                            completed_dates: uniqueCompletedDates
+                        });
+                    } else {
+                        existingPlan.completed_dates = uniqueCompletedDates;
+                    }
                 }
             }
             
-            // 월별 데이터 병합
+            const uniquePlans = Array.from(planMap.values())
+                .sort((a, b) => (b.id || 0) - (a.id || 0));
+            
+            // 월별 데이터 병합 (개선된 버전)
             const mergedMonthlyData = { ...localProfile.monthlyData };
             if (firebaseProfile.monthlyData) {
                 for (const [month, monthData] of Object.entries(firebaseProfile.monthlyData)) {
                     if (!mergedMonthlyData[month]) {
-                        mergedMonthlyData[month] = monthData;
+                        mergedMonthlyData[month] = { ...monthData };
                     } else {
-                        // 월별 계획도 병합
+                        // 월별 계획도 동일한 방식으로 병합
                         const monthPlans = [...(mergedMonthlyData[month].exercisePlans || []), ...(monthData.exercisePlans || [])];
-                        const uniqueMonthPlans = [];
-                        const monthSeenIds = new Set();
+                        const monthPlanMap = new Map();
                         
-                        monthPlans.sort((a, b) => (b.id || 0) - (a.id || 0));
                         for (const plan of monthPlans) {
-                            if (!monthSeenIds.has(plan.id)) {
-                                monthSeenIds.add(plan.id);
-                                uniqueMonthPlans.push(plan);
+                            const planId = plan.id;
+                            if (!monthPlanMap.has(planId)) {
+                                monthPlanMap.set(planId, { ...plan, completed_dates: [...(plan.completed_dates || [])] });
+                            } else {
+                                const existingPlan = monthPlanMap.get(planId);
+                                const allCompletedDates = [
+                                    ...(existingPlan.completed_dates || []),
+                                    ...(plan.completed_dates || [])
+                                ];
+                                const uniqueCompletedDates = [...new Set(allCompletedDates)];
+                                
+                                const existingDate = new Date(existingPlan.created_date || 0);
+                                const currentDate = new Date(plan.created_date || 0);
+                                
+                                if (currentDate >= existingDate) {
+                                    monthPlanMap.set(planId, {
+                                        ...plan,
+                                        completed_dates: uniqueCompletedDates
+                                    });
+                                } else {
+                                    existingPlan.completed_dates = uniqueCompletedDates;
+                                }
                             }
                         }
+                        
+                        const uniqueMonthPlans = Array.from(monthPlanMap.values())
+                            .sort((a, b) => (b.id || 0) - (a.id || 0));
                         
                         mergedMonthlyData[month] = {
                             ...monthData,
@@ -2806,17 +2965,18 @@ async function mergeDataSafely(firebaseData) {
             mergedProfiles[profileName] = {
                 exercisePlans: uniquePlans,
                 monthlyData: mergedMonthlyData,
-                score: 0, // 점수는 다시 계산됨
-                completedCount: 0 // 완료 수도 다시 계산됨
+                score: Math.max(localProfile.score || 0, firebaseProfile.score || 0),
+                completedCount: Math.max(localProfile.completedCount || 0, firebaseProfile.completedCount || 0)
             };
         }
         
         const mergedData = {
             defaultProfile: firebaseData.defaultProfile || localData.defaultProfile,
-            profiles: mergedProfiles
+            profiles: mergedProfiles,
+            lastUpdated: firebaseTimestamp > localTimestamp ? firebaseData.lastUpdated : localData.lastUpdated
         };
         
-        console.log('✅ 데이터 병합 완료');
+        console.log('✅ 데이터 병합 완료 - 총 프로필:', Object.keys(mergedProfiles).length);
         return mergedData;
         
     } catch (error) {
@@ -2838,31 +2998,61 @@ function getDefaultData() {
     };
 }
 
-// 데이터 저장 (Firebase + 로컬 백업)
+// 데이터 저장 (Firebase + 로컬 백업) - 개선된 버전
 async function saveData(data) {
     try {
+        console.log('💾 데이터 저장 시작...');
+        
         // Firebase 업데이트 중임을 표시 (무한 루프 방지)
         isUpdatingFromFirebase = true;
         
-    // 로컬에 백업 저장
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    
-    // Firebase에도 저장 시도
-    if (isFirebaseAvailable) {
-            const success = await saveDataToFirebase(data);
-            if (!success) {
+        // 타임스탬프 추가
+        const dataWithTimestamp = {
+            ...data,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        // 로컬에 백업 저장
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataWithTimestamp));
+        console.log('✅ 로컬 저장 완료');
+        
+        // Firebase에도 저장 시도
+        if (isFirebaseAvailable) {
+            console.log('🔥 Firebase 저장 시도...');
+            const success = await saveDataToFirebase(dataWithTimestamp);
+            if (success) {
+                console.log('✅ Firebase 저장 성공');
+                showMessage('🔄 가족과 동기화 완료', true);
+            } else {
                 console.warn('⚠️ Firebase 저장 실패 - 로컬 저장만 완료됨');
+                showMessage('📱 로컬 저장 완료 (동기화 재시도 중)', true);
+                
+                // 재시도 로직 추가
+                setTimeout(async () => {
+                    console.log('🔄 Firebase 저장 재시도...');
+                    const retrySuccess = await saveDataToFirebase(dataWithTimestamp);
+                    if (retrySuccess) {
+                        console.log('✅ Firebase 저장 재시도 성공');
+                        showMessage('🔄 지연 동기화 완료', true);
+                    }
+                }, 5000);
             }
+        } else {
+            console.log('📱 오프라인 모드 - 로컬 저장만 완료');
+            showMessage('📱 오프라인 저장 완료', true);
         }
         
-        // 짧은 지연 후 플래그 해제
+        // 동적 지연 후 플래그 해제 (Firebase 저장 상태에 따라)
+        const delay = isFirebaseAvailable ? 2000 : 500;
         setTimeout(() => {
             isUpdatingFromFirebase = false;
-        }, 1000);
+            console.log('🏁 저장 플래그 해제됨');
+        }, delay);
         
     } catch (error) {
         console.error('❌ 데이터 저장 중 오류:', error);
         isUpdatingFromFirebase = false;
+        showMessage('❌ 저장 중 오류 발생', true);
         throw error;
     }
 }
@@ -3129,16 +3319,19 @@ async function fetchHourlyForecast(lat, lon) {
     }
 }
 
-// 모의 날씨 데이터 (API 키가 없을 때 사용)
-function getMockWeatherData() {
+// 모의 날씨 데이터 (API 키가 없을 때 사용) - 위치 기반 개선
+function getMockWeatherData(locationName = null) {
     const now = new Date();
     const hour = now.getHours();
+    
+    // 현재 위치명 설정 (위치 정보가 있으면 사용, 없으면 기본값)
+    const displayName = locationName || '현재 위치 (데모)';
     
     // 시간대별 날씨 시뮬레이션
     let mockData = {
         main: { temp: 20, feels_like: 22, humidity: 65 },
         weather: [{ main: 'Clear', description: 'clear sky', icon: '01d' }],
-        name: '서울특별시',
+        name: displayName,
         sys: { country: 'KR' },
         wind: { speed: 2.5 }
     };
@@ -3281,24 +3474,30 @@ async function updateWeatherInfo() {
             // 실제 위치 가져오기 시도
             location = await getCurrentLocation();
             locationName = `📍 ${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)}`;
+            console.log(`📍 현재 위치 확인됨: ${locationName}`);
             
             // API 키가 설정되어 있다면 실제 날씨 데이터 사용
             if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
+                console.log('🌤️ 실제 날씨 API로 데이터 가져오는 중...');
                 weatherData = await fetchWeatherData(location.latitude, location.longitude);
                 forecastData = await fetchHourlyForecast(location.latitude, location.longitude);
                 locationName = `📍 ${weatherData.name}`;
+                console.log(`✅ 실제 날씨 데이터: ${weatherData.name}, ${Math.round(weatherData.main.temp)}°C`);
             } else {
-                // API 키가 없다면 모의 데이터 사용
-                weatherData = await getMockWeatherData();
+                // API 키가 없다면 현재 위치 기반 모의 데이터 사용
+                console.log('📱 현재 위치 기반 Mock 데이터 생성 중...');
+                const estimatedLocation = await getLocationNameFromCoords(location.latitude, location.longitude);
+                weatherData = await getMockWeatherData(estimatedLocation);
                 forecastData = await getMockHourlyForecast();
-                locationName = `📍 ${weatherData.name} (데모)`;
+                locationName = `📍 ${estimatedLocation} (데모)`;
+                console.log(`📱 Mock 데이터 생성: ${estimatedLocation}`);
             }
         } catch (locationError) {
             console.warn('위치 정보 가져오기 실패:', locationError.message);
             // 위치 접근 실패 시 기본 위치로 모의 데이터 사용
-            weatherData = await getMockWeatherData();
+            weatherData = await getMockWeatherData('현재 위치');
             forecastData = await getMockHourlyForecast();
-            locationName = `📍 서울특별시 (기본)`;
+            locationName = `📍 현재 위치 (위치접근불가)`;
         }
         
         // 현재 날씨 UI 업데이트
@@ -3542,11 +3741,11 @@ function generateMotivationPrompt(data, weatherData) {
     return contextPrompt + weatherPrompt + requestPrompt;
 }
 
-// 실제 AI 메시지 생성 (Hugging Face API 우선)
+// 실제 AI 메시지 생성 (Hugging Face API 우선) - 개선된 버전
 async function callHuggingFaceAPI(prompt) {
     // 실제 AI API 우선 시도
     if (HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'hf_YOUR_API_KEY') {
-        console.log('🤖 Hugging Face AI API 호출 중...');
+        console.log('🤖 실제 AI API 호출 중...');
         
         try {
             const response = await fetch(HUGGINGFACE_API_URL, {
@@ -3597,8 +3796,8 @@ async function callHuggingFaceAPI(prompt) {
                 // 최소 길이 체크 및 한국어 포함 여부 확인
                 const hasKorean = /[가-힣]/.test(aiMessage);
                 if (aiMessage && aiMessage.length > 5 && (hasKorean || aiMessage.length > 10)) {
-                    console.log('✅ AI API 메시지 생성 성공:', aiMessage);
-                    return aiMessage;
+                    console.log('✅ 실제 AI API 메시지 생성 성공:', aiMessage);
+                    return { message: aiMessage, isRealAI: true };
                 } else {
                     throw new Error('AI 응답이 부적절하거나 너무 짧음');
                 }
@@ -3608,14 +3807,16 @@ async function callHuggingFaceAPI(prompt) {
                 throw new Error(`AI API 응답 오류: ${response.status}`);
             }
         } catch (error) {
-            console.log('❌ AI API 호출 실패, 백업 메시지 사용:', error.message);
+            console.log('❌ 실제 AI API 호출 실패, 메시지 조합 모드로 전환:', error.message);
             // AI 실패시 백업으로 조합 방식 사용
-            return generateMockMotivationMessage(prompt);
+            const mockMessage = generateMockMotivationMessage(prompt);
+            return { message: mockMessage, isRealAI: false };
         }
     } else {
-        console.log('⚠️ AI API 키가 없어서 백업 메시지 사용');
+        console.log('⚠️ AI API 키가 설정되지 않음 - 스마트 메시지 조합 모드 사용');
         // API 키가 없으면 백업으로 조합 방식 사용
-        return generateMockMotivationMessage(prompt);
+        const mockMessage = generateMockMotivationMessage(prompt);
+        return { message: mockMessage, isRealAI: false };
     }
 }
 
@@ -3853,13 +4054,27 @@ function getRandomItem(array) {
     return array[Math.floor(Math.random() * array.length)];
 }
 
-// AI용 현재 날씨 데이터 가져오기
+// AI용 현재 날씨 데이터 가져오기 - 실제 위치 기반 개선
 async function getCurrentWeatherForAI() {
     try {
-        // API 키가 있으면 실제 날씨 데이터 사용
-        if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
-            const position = await getCurrentLocation();
+        let position = null;
+        let locationName = '현재 위치';
+        
+        // 먼저 현재 위치 가져오기 시도
+        try {
+            position = await getCurrentLocation();
+            console.log(`📍 현재 위치 확인됨: ${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)}`);
+        } catch (locationError) {
+            console.warn('위치 정보 가져오기 실패:', locationError.message);
+            // 위치 접근 실패시에도 계속 진행 (Mock 데이터 사용)
+        }
+        
+        // API 키가 있고 위치 정보가 있으면 실제 날씨 데이터 사용
+        if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY' && position) {
+            console.log('🌤️ 실제 날씨 API 호출 중...');
             const weatherData = await fetchWeatherData(position.latitude, position.longitude);
+            
+            console.log(`✅ 실제 날씨 데이터 로드 완료: ${weatherData.name}, ${Math.round(weatherData.main.temp)}°C`);
             
             return {
                 temperature: Math.round(weatherData.main.temp),
@@ -3870,8 +4085,17 @@ async function getCurrentWeatherForAI() {
                 location: weatherData.name
             };
         } else {
-            // Mock 데이터 사용
-            const mockData = getMockWeatherData();
+            // API 키가 없거나 위치 정보가 없으면 현재 위치 기반 Mock 데이터 사용
+            let mockLocationName = locationName;
+            
+            if (position) {
+                // 위치 정보가 있으면 좌표를 이용해 지역명 추정
+                mockLocationName = await getLocationNameFromCoords(position.latitude, position.longitude);
+            }
+            
+            console.log(`📱 Mock 날씨 데이터 사용: ${mockLocationName}`);
+            const mockData = await getMockWeatherData(mockLocationName);
+            
             return {
                 temperature: Math.round(mockData.main.temp),
                 condition: mockData.weather[0].main,
@@ -3895,15 +4119,142 @@ async function getCurrentWeatherForAI() {
     }
 }
 
-// 메시지만 업데이트 (상태 표시기는 헤더에 고정)
-function updateMessageWithAIIndicator(messageElement, text) {
-    // 단순히 텍스트만 설정 (상태 표시기는 헤더에 있음)
-    messageElement.textContent = text;
+// 좌표로부터 대략적인 지역명 추정 (Reverse Geocoding 대체)
+async function getLocationNameFromCoords(lat, lon) {
+    try {
+        // 실제 Reverse Geocoding API가 있다면 사용
+        if (WEATHER_API_KEY && WEATHER_API_KEY !== 'YOUR_API_KEY') {
+            // OpenWeatherMap의 Reverse Geocoding API 사용
+            const response = await fetch(
+                `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${WEATHER_API_KEY}`
+            );
+            
+            if (response.ok) {
+                const locationData = await response.json();
+                if (locationData && locationData.length > 0) {
+                    const location = locationData[0];
+                    const locationName = location.local_names?.ko || location.name;
+                    const state = location.state;
+                    return state ? `${locationName}, ${state}` : locationName;
+                }
+            }
+        }
+        
+        // API가 없거나 실패시 좌표 기반으로 대한민국 지역 추정
+        return estimateKoreanLocation(lat, lon);
+        
+    } catch (error) {
+        console.warn('지역명 가져오기 실패:', error);
+        return `위도 ${lat.toFixed(2)}, 경도 ${lon.toFixed(2)}`;
+    }
+}
+
+// 좌표 기반 대한민국 지역 추정 (간단한 범위 체크)
+function estimateKoreanLocation(lat, lon) {
+    // 대한민국 주요 도시들의 대략적인 좌표 범위
+    const regions = [
+        { name: '서울특별시', lat: [37.4, 37.7], lon: [126.8, 127.2] },
+        { name: '부산광역시', lat: [35.0, 35.3], lon: [128.9, 129.3] },
+        { name: '대구광역시', lat: [35.7, 36.0], lon: [128.5, 128.8] },
+        { name: '인천광역시', lat: [37.3, 37.6], lon: [126.4, 126.9] },
+        { name: '광주광역시', lat: [35.1, 35.3], lon: [126.8, 127.0] },
+        { name: '대전광역시', lat: [36.2, 36.5], lon: [127.3, 127.5] },
+        { name: '울산광역시', lat: [35.4, 35.7], lon: [129.2, 129.4] },
+        { name: '경기도', lat: [37.0, 38.0], lon: [126.5, 127.8] },
+        { name: '강원도', lat: [37.0, 38.6], lon: [127.5, 129.4] },
+        { name: '충청북도', lat: [36.2, 37.2], lon: [127.4, 128.8] },
+        { name: '충청남도', lat: [35.8, 37.0], lon: [126.1, 127.8] },
+        { name: '전라북도', lat: [35.6, 36.3], lon: [126.4, 127.8] },
+        { name: '전라남도', lat: [34.2, 35.8], lon: [125.9, 127.6] },
+        { name: '경상북도', lat: [35.4, 37.2], lon: [128.1, 130.0] },
+        { name: '경상남도', lat: [34.6, 36.0], lon: [127.7, 129.2] },
+        { name: '제주특별자치도', lat: [33.1, 33.6], lon: [126.1, 126.9] }
+    ];
+    
+    // 현재 좌표와 가장 가까운 지역 찾기
+    for (const region of regions) {
+        if (lat >= region.lat[0] && lat <= region.lat[1] && 
+            lon >= region.lon[0] && lon <= region.lon[1]) {
+            return `${region.name} (추정)`;
+        }
+    }
+    
+    // 어떤 지역에도 해당하지 않으면 좌표 표시
+    return `위도 ${lat.toFixed(2)}, 경도 ${lon.toFixed(2)}`;
+}
+
+// 메시지 업데이트 (AI 활용 여부 표시 개선)
+function updateMessageWithAIIndicator(messageElement, text, isRealAI = false) {
+    // AI 활용 여부에 따라 다른 스타일 적용
+    if (isRealAI) {
+        // 실제 AI 사용시
+        messageElement.innerHTML = `
+            <div class="ai-message-container">
+                <div class="ai-indicator real-ai">🤖 AI 생성</div>
+                <div class="message-text">${text}</div>
+            </div>
+        `;
+        console.log('🤖 실제 AI 생성 메시지 표시');
+    } else {
+        // 메시지 조합 사용시
+        messageElement.innerHTML = `
+            <div class="ai-message-container">
+                <div class="ai-indicator smart-compose">🧠 스마트 조합</div>
+                <div class="message-text">${text}</div>
+            </div>
+        `;
+        console.log('🧠 스마트 메시지 조합 표시');
+    }
+    
+    // 동적 스타일 추가
+    if (!document.getElementById('ai-message-styles')) {
+        const style = document.createElement('style');
+        style.id = 'ai-message-styles';
+        style.textContent = `
+            .ai-message-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .ai-indicator {
+                font-size: 0.75rem;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-weight: 600;
+                opacity: 0.8;
+                transition: opacity 0.3s ease;
+            }
+            
+            .ai-indicator.real-ai {
+                background: linear-gradient(45deg, #4facfe, #00f2fe);
+                color: white;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            }
+            
+            .ai-indicator.smart-compose {
+                background: linear-gradient(45deg, #a8edea, #fed6e3);
+                color: #333;
+                border: 1px solid rgba(0,0,0,0.1);
+            }
+            
+            .message-text {
+                text-align: center;
+                line-height: 1.4;
+            }
+            
+            .ai-message-container:hover .ai-indicator {
+                opacity: 1;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 // 통계 UI 업데이트 함수 제거됨 (메시지만 표시)
 
-// 동기부여 메시지 생성 및 표시
+// 동기부여 메시지 생성 및 표시 - 개선된 버전
 async function generateMotivationMessage() {
     const messageElement = document.getElementById('motivation-message');
     const refreshBtn = document.getElementById('motivation-refresh');
@@ -3916,33 +4267,49 @@ async function generateMotivationMessage() {
         refreshBtn?.classList.add('loading');
         messageElement.classList.add('generating');
         robotIcon?.classList.add('ai-thinking');
-        messageElement.textContent = 'AI가 운동 기록과 날씨 데이터를 분석하여 맞춤형 메시지를 생성하고 있습니다...';
         
         // 운동 데이터 분석
         const exerciseData = analyzeExerciseData(currentProfile);
+        console.log(`📊 ${currentProfile} 운동 데이터 분석:`, exerciseData);
         
         // 현재 날씨 데이터 가져오기
         const weatherData = await getCurrentWeatherForAI();
+        console.log('🌤️ 현재 날씨 데이터:', weatherData);
         
         if (exerciseData) {
-            // AI 프롬프트 생성 (운동 데이터 + 날씨 데이터)
+            // AI 프롬프트 생성 (개인별 운동 데이터 + 날씨 데이터)
             const prompt = generateMotivationPrompt(exerciseData, weatherData);
-            console.log('AI 프롬프트 (운동+날씨):', prompt);
+            console.log(`🤖 ${currentProfile}님 맞춤 AI 프롬프트 (운동+날씨):`, prompt);
             
-            // AI 메시지 생성
-            const aiMessage = await callHuggingFaceAPI(prompt);
+            // API 키 확인으로 실제 AI 사용 여부 판단
+            const hasRealAI = HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'your_huggingface_api_key_here';
             
-            // 메시지 표시
-            updateMessageWithAIIndicator(messageElement, aiMessage);
+            if (hasRealAI) {
+                messageElement.textContent = `${currentProfile}님의 운동 기록과 날씨를 AI가 분석하여 맞춤 메시지를 생성하고 있습니다...`;
+            } else {
+                messageElement.textContent = 'AI 메시지 생성을 준비중입니다...';
+                // 메시지 조합 모드임을 명확히 표시하기 위한 추가 지연
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
             
-            console.log('✅ AI 동기부여 메시지 생성 완료 (운동+날씨):', aiMessage);
+            // AI 메시지 생성 (실제 AI 또는 스마트 조합)
+            const result = await callHuggingFaceAPI(prompt);
+            
+            // 메시지 표시 (AI 활용 여부에 따라 다르게 표시)
+            updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
+            
+            if (result.isRealAI) {
+                console.log(`✅ 실제 AI로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
+            } else {
+                console.log(`✅ 스마트 메시지 조합으로 ${currentProfile}님 맞춤 메시지 생성 완료:`, result.message);
+            }
         } else {
-            messageElement.textContent = '운동 기록을 더 쌓으시면 맞춤형 메시지를 드릴 수 있어요! 💪';
+            messageElement.textContent = `${currentProfile}님, 운동 기록을 더 쌓으시면 개인 맞춤형 메시지를 드릴 수 있어요! 💪`;
         }
         
     } catch (error) {
         console.error('❌ 동기부여 메시지 생성 실패:', error);
-        updateMessageWithAIIndicator(messageElement, '오늘도 건강한 하루 만들어봐요! 화이팅! 💪');
+        updateMessageWithAIIndicator(messageElement, `${currentProfile}님, 오늘도 건강한 하루 만들어봐요! 화이팅! 💪`, false);
     } finally {
         // 로딩 상태 해제 (로봇 아이콘 회전 정지)
         refreshBtn?.classList.remove('loading');
