@@ -4847,76 +4847,62 @@ async function generateMotivationMessage() {
     } catch (error) {
         console.error('❌ 동기부여 메시지 생성 실패:', error);
         
-        // 상황별 구체적 오류 메시지와 아이콘 설정
-        let errorIcon = '';
-        let errorTitle = '';
-        let errorDetail = '';
-        let indicatorText = '';
+        // 디버그 로그가 있는 경우 그대로 유지하고 오류 메시지만 추가
+        const debugLogs = document.getElementById('debug-logs') || document.getElementById('debug-logs-start');
         
-        if (error.message && error.message.includes('API 키')) {
-            errorIcon = '🔑';
-            errorTitle = 'API 키 설정 필요';
-            errorDetail = 'Hugging Face API 키가 설정되지 않았습니다.';
-            indicatorText = '🔑 키 필요';
-            console.log('🔧 해결 방법: AI_MOTIVATION_SETUP.md 파일을 참고하여 Hugging Face API 키를 설정해주세요.');
-        } else if (error.message && error.message.includes('네트워크') || error.message.includes('fetch')) {
-            errorIcon = '🌐';
-            errorTitle = '네트워크 연결 오류';
-            errorDetail = '인터넷 연결을 확인하고 다시 시도해주세요.';
-            indicatorText = '🌐 연결 오류';
-            console.log('🌐 네트워크 연결을 확인해주세요.');
-        } else if (error.message && error.message.includes('한도') || error.message.includes('429')) {
-            errorIcon = '⏰';
-            errorTitle = 'API 사용량 한도 초과';
-            errorDetail = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
-            indicatorText = '⏰ 한도 초과';
-            console.log('⏰ API 요청 한도 초과. 잠시 후 다시 시도해주세요.');
-        } else if (error.message && error.message.includes('503') || error.message.includes('로딩')) {
-            errorIcon = '🔄';
-            errorTitle = 'AI 모델 준비 중';
-            errorDetail = 'AI 모델이 로딩 중입니다. 잠시 후 다시 시도해주세요.';
-            indicatorText = '🔄 로딩 중';
-            console.log('🤖 AI 모델 로딩 중입니다.');
-        } else if (error.message && error.message.includes('401') || error.message.includes('인증')) {
-            errorIcon = '🔐';
-            errorTitle = 'API 인증 실패';
-            errorDetail = 'API 키가 유효하지 않습니다. 새로운 키를 발급받아주세요.';
-            indicatorText = '🔐 인증 실패';
-            console.log('🔐 API 키 인증에 실패했습니다.');
-        } else if (error.message && error.message.includes('403') || error.message.includes('접근')) {
-            errorIcon = '🚫';
-            errorTitle = 'API 접근 거부';
-            errorDetail = 'API 접근 권한이 없습니다. 권한을 확인해주세요.';
-            indicatorText = '🚫 접근 거부';
-            console.log('🚫 API 접근이 거부되었습니다.');
-        } else if (error.message && error.message.includes('모든 AI 모델')) {
-            errorIcon = '🤖';
-            errorTitle = '모든 AI 모델 시도 실패';
-            errorDetail = '여러 AI 모델을 시도했지만 모두 실패했습니다.';
-            indicatorText = '🤖 모델 실패';
-            console.log('🤖 모든 AI 모델 시도가 실패했습니다.');
-        } else {
-            errorIcon = '⚠️';
-            errorTitle = '알 수 없는 오류';
-            errorDetail = `예상치 못한 오류가 발생했습니다: ${error.message}`;
-            indicatorText = '⚠️ 오류';
-            console.log('⚠️ 알 수 없는 오류가 발생했습니다.');
-        }
-        
-        // 상황별 맞춤 오류 메시지 표시
-        messageElement.innerHTML = `
-            <div style="color: #ff6b6b; text-align: center; padding: 15px; border-radius: 8px; background: rgba(255, 107, 107, 0.1);">
-                <div style="font-size: 2em; margin-bottom: 10px;">${errorIcon}</div>
-                <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">${errorTitle}</div>
-                <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 10px;">${errorDetail}</div>
-                <div style="font-size: 0.8em; opacity: 0.6; padding: 8px; background: rgba(255, 255, 255, 0.2); border-radius: 4px;">
-                    💡 새로고침 버튼을 눌러 다시 시도해보세요
+        if (debugLogs) {
+            // 디버그 창에 최종 오류 추가
+            debugLogs.innerHTML += `
+                <div style="color: #ff6b6b; font-weight: bold; margin-top: 10px; padding: 8px; background: rgba(255,0,0,0.1); border-radius: 4px;">
+                    ❌ 최종 오류: ${error.message}
                 </div>
-            </div>
-        `;
-        
-        // 상황별 맞춤 표시 아이콘
-        updateMessageWithAIIndicator(messageElement, '', false, indicatorText);
+            `;
+            debugLogs.scrollTop = debugLogs.scrollHeight;
+            
+            // 디버그 창 제목을 오류 상태로 변경
+            const debugContainer = debugLogs.parentElement;
+            if (debugContainer) {
+                const titleElement = debugContainer.querySelector('div:first-child');
+                if (titleElement) {
+                    titleElement.innerHTML = '❌ AI 메시지 생성 실패 - 디버그 로그:';
+                    titleElement.style.color = '#ff6b6b';
+                }
+            }
+        } else {
+            // 디버그 창이 없는 경우에만 기본 오류 메시지 표시
+            let errorIcon = '❌';
+            let errorTitle = 'AI 메시지 생성 실패';
+            let errorDetail = error.message;
+            
+            if (error.message && error.message.includes('API 키')) {
+                errorIcon = '🔑';
+                errorTitle = 'API 키 설정 필요';
+                errorDetail = 'Hugging Face API 키가 설정되지 않았습니다.';
+            } else if (error.message && error.message.includes('네트워크') || error.message.includes('fetch')) {
+                errorIcon = '🌐';
+                errorTitle = '네트워크 연결 오류';
+                errorDetail = '인터넷 연결을 확인하고 다시 시도해주세요.';
+            } else if (error.message && error.message.includes('한도') || error.message.includes('429')) {
+                errorIcon = '⏰';
+                errorTitle = 'API 사용량 한도 초과';
+                errorDetail = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
+            } else if (error.message && error.message.includes('503') || error.message.includes('로딩')) {
+                errorIcon = '🔄';
+                errorTitle = 'AI 모델 준비 중';
+                errorDetail = 'AI 모델이 로딩 중입니다. 잠시 후 다시 시도해주세요.';
+            }
+            
+            messageElement.innerHTML = `
+                <div style="color: #ff6b6b; text-align: center; padding: 15px; border-radius: 8px; background: rgba(255, 107, 107, 0.1);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">${errorIcon}</div>
+                    <div style="font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">${errorTitle}</div>
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-bottom: 10px;">${errorDetail}</div>
+                    <div style="font-size: 0.8em; opacity: 0.6; padding: 8px; background: rgba(255, 255, 255, 0.2); border-radius: 4px;">
+                        💡 새로고침 버튼을 눌러 다시 시도해보세요
+                    </div>
+                </div>
+            `;
+        }
         
     } finally {
         // 로딩 상태 해제 (로봇 아이콘 회전 정지)
