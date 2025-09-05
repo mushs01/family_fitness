@@ -1441,8 +1441,13 @@ async function showDateExerciseInfo(dateStr) {
                 </div>
                 <div style="margin-top: 10px; text-align: center;">
                     <button onclick="toggleExerciseForDate('${plan.id}', '${dateStr}', this.parentElement.parentElement.parentElement.parentElement)" 
-                            style="background: ${isCompleted ? '#f44336' : '#4caf50'}; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                            style="background: ${isCompleted ? '#f44336' : '#4caf50'}; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-right: 8px;">
                         ${isCompleted ? '완료 취소' : '완료 처리'}
+                    </button>
+                    <button onclick="deleteExercisePlan('${plan.id}', this.parentElement.parentElement.parentElement.parentElement)" 
+                            style="background: #ff5722; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;"
+                            title="이 운동 계획을 완전히 삭제합니다">
+                        🗑️ 삭제
                     </button>
                 </div>
             </div>
@@ -1544,9 +1549,75 @@ async function toggleExerciseForDate(planId, dateStr, modalElement) {
     }
 }
 
+// 운동 계획 삭제 함수
+async function deleteExercisePlan(planId, modalElement) {
+    try {
+        // 삭제 확인
+        const confirmDelete = confirm('⚠️ 이 운동 계획을 완전히 삭제하시겠습니까?\n\n삭제된 계획과 모든 운동 기록은 복구할 수 없습니다.');
+        
+        if (!confirmDelete) {
+            return;
+        }
+        
+        console.log(`🗑️ 운동 계획 삭제 시작: ${planId}`);
+        
+        const data = await loadData();
+        const profileData = data.profiles[currentProfile];
+        
+        if (!profileData || !profileData.exercisePlans) {
+            console.error('❌ 프로필 데이터 또는 운동 계획이 없습니다.');
+            alert('프로필 데이터를 찾을 수 없습니다.');
+            return;
+        }
+        
+        // 삭제할 계획 찾기
+        const planIndex = profileData.exercisePlans.findIndex(plan => plan.id === planId);
+        
+        if (planIndex === -1) {
+            console.error(`❌ 삭제할 계획을 찾을 수 없습니다: ${planId}`);
+            alert('삭제할 운동 계획을 찾을 수 없습니다.');
+            return;
+        }
+        
+        const planToDelete = profileData.exercisePlans[planIndex];
+        console.log(`🗑️ 삭제할 계획: ${planToDelete.exercise_type} (${planToDelete.start_date} ~ ${planToDelete.end_date})`);
+        
+        // 계획 삭제
+        profileData.exercisePlans.splice(planIndex, 1);
+        
+        // 데이터 저장
+        await saveData(data);
+        
+        console.log(`✅ 운동 계획 삭제 완료: ${planToDelete.exercise_type}`);
+        
+        // 성공 메시지
+        showMessage(`🗑️ "${planToDelete.exercise_type}" 계획이 삭제되었습니다.`, 'success');
+        
+        // 모달 닫기
+        if (modalElement) {
+            modalElement.remove();
+        }
+        
+        // UI 업데이트
+        await updateCalendar();
+        await updateProfileCards();
+        await updateRanking();
+        
+        // 현재 프로필 정보 업데이트
+        if (typeof updateCurrentProfileInfo === 'function') {
+            await updateCurrentProfileInfo();
+        }
+        
+    } catch (error) {
+        console.error('❌ 운동 계획 삭제 실패:', error);
+        alert('운동 계획 삭제 중 오류가 발생했습니다.');
+    }
+}
+
 // 전역 함수로 노출
 if (typeof window !== 'undefined') {
     window.toggleExerciseForDate = toggleExerciseForDate;
+    window.deleteExercisePlan = deleteExercisePlan;
 }
 
 
@@ -1771,18 +1842,21 @@ function calculateProfileScore(profileName, profileData) {
     let completionScore = 0;
     let planScore = 0;
     
-    // 이번 달에 생성된 운동 계획들만 계산
+    // 모든 운동 계획에서 이번 달 완료된 운동들만 계산
     if (profileData.exercisePlans && Array.isArray(profileData.exercisePlans)) {
         console.log(`📊 ${profileName}: 총 ${profileData.exercisePlans.length}개 운동 계획 확인`);
         
+        // 이번 달 생성된 계획 수 (보너스 점수용)
         const thisMonthPlans = profileData.exercisePlans.filter(plan => {
             const planCreatedDate = new Date(plan.created_date);
             return planCreatedDate >= currentMonthStart && planCreatedDate <= now;
         });
+        planScore = thisMonthPlans.length; // 이번달 생성된 계획 수만큼 보너스
         
-        console.log(`📅 이번 달 생성된 계획: ${thisMonthPlans.length}개`);
+        console.log(`📅 이번 달 생성된 계획: ${thisMonthPlans.length}개 (보너스 점수: ${planScore}점)`);
         
-        thisMonthPlans.forEach(plan => {
+        // 모든 계획을 확인하되, 이번 달 완료된 운동만 점수 계산
+        profileData.exercisePlans.forEach(plan => {
             // 이번 달에 완료된 운동 횟수만 계산
             if (plan.completed_dates && Array.isArray(plan.completed_dates)) {
                 const thisMonthCompletions = plan.completed_dates.filter(dateStr => {
@@ -1791,16 +1865,16 @@ function calculateProfileScore(profileName, profileData) {
                 });
                 
                 const completedCount = thisMonthCompletions.length;
-                const exerciseScore = getExerciseScore(plan.exercise_type);
-                const planCompletionScore = completedCount * exerciseScore;
                 
-                completionScore += planCompletionScore;
-                
-                console.log(`  📝 ${plan.exercise_type}: 이번달 ${completedCount}회 완료 × ${exerciseScore}점 = ${planCompletionScore}점`);
+                if (completedCount > 0) {
+                    const exerciseScore = getExerciseScore(plan.exercise_type);
+                    const planCompletionScore = completedCount * exerciseScore;
+                    
+                    completionScore += planCompletionScore;
+                    
+                    console.log(`  📝 ${plan.exercise_type}: 이번달 ${completedCount}회 완료 × ${exerciseScore}점 = ${planCompletionScore}점`);
+                }
             }
-            
-            // 계획 보너스 점수 (이번달 계획 1개당 1점)
-            planScore += 1;
         });
         
         console.log(`📊 ${profileName} 이번달(${currentMonth}) 점수 계산:`);
@@ -4250,6 +4324,99 @@ async function getCurrentWeatherForAI() {
     }
 }
 
+// 영어 지역명을 한글로 변환
+function translateLocationToKorean(locationName) {
+    const locationMap = {
+        // 광역시/특별시
+        'Seoul': '서울특별시',
+        'Busan': '부산광역시',
+        'Incheon': '인천광역시',
+        'Daegu': '대구광역시',
+        'Daejeon': '대전광역시',
+        'Gwangju': '광주광역시',
+        'Ulsan': '울산광역시',
+        'Sejong': '세종특별자치시',
+        
+        // 도(道)
+        'Gyeonggi Province': '경기도',
+        'Gyeonggi-do': '경기도',
+        'Gangwon Province': '강원도',
+        'Gangwon-do': '강원도',
+        'North Chungcheong Province': '충청북도',
+        'Chungcheongbuk-do': '충청북도',
+        'South Chungcheong Province': '충청남도',
+        'Chungcheongnam-do': '충청남도',
+        'North Jeolla Province': '전라북도',
+        'Jeollabuk-do': '전라북도',
+        'South Jeolla Province': '전라남도',
+        'Jeollanam-do': '전라남도',
+        'North Gyeongsang Province': '경상북도',
+        'Gyeongsangbuk-do': '경상북도',
+        'South Gyeongsang Province': '경상남도',
+        'Gyeongsangnam-do': '경상남도',
+        'Jeju Province': '제주특별자치도',
+        'Jeju-do': '제주특별자치도',
+        
+        // 주요 시/군
+        'Suwon': '수원시',
+        'Yongin': '용인시',
+        'Seongnam': '성남시',
+        'Hwaseong': '화성시',
+        'Bucheon': '부천시',
+        'Ansan': '안산시',
+        'Anyang': '안양시',
+        'Namyangju': '남양주시',
+        'Hwaseong-si': '화성시',
+        'Pyeongtaek': '평택시',
+        'Uijeongbu': '의정부시',
+        'Siheung': '시흥시',
+        'Gimpo': '김포시',
+        'Gwangju': '광주시', // 경기도 광주시
+        'Gwangmyeong': '광명시',
+        'Gunpo': '군포시',
+        'Hanam': '하남시',
+        'Osan': '오산시',
+        'Icheon': '이천시',
+        'Yangju': '양주시',
+        'Anseong': '안성시',
+        'Pocheon': '포천시',
+        'Dongducheon': '동두천시',
+        'Paju': '파주시',
+        'Yeoju': '여주시',
+        'Gapyeong': '가평군',
+        'Yeoncheon': '연천군',
+        
+        // 구(區)
+        'Gangnam-gu': '강남구',
+        'Gangdong-gu': '강동구',
+        'Gangbuk-gu': '강북구',
+        'Gangseo-gu': '강서구',
+        'Gwanak-gu': '관악구',
+        'Gwangjin-gu': '광진구',
+        'Guro-gu': '구로구',
+        'Geumcheon-gu': '금천구',
+        'Nowon-gu': '노원구',
+        'Dobong-gu': '도봉구',
+        'Dongdaemun-gu': '동대문구',
+        'Dongjak-gu': '동작구',
+        'Mapo-gu': '마포구',
+        'Seodaemun-gu': '서대문구',
+        'Seocho-gu': '서초구',
+        'Seongdong-gu': '성동구',
+        'Seongbuk-gu': '성북구',
+        'Songpa-gu': '송파구',
+        'Yangcheon-gu': '양천구',
+        'Yeongdeungpo-gu': '영등포구',
+        'Yongsan-gu': '용산구',
+        'Eunpyeong-gu': '은평구',
+        'Jongno-gu': '종로구',
+        'Jung-gu': '중구',
+        'Jungnang-gu': '중랑구'
+    };
+    
+    return locationMap[locationName] || locationName;
+}
+
 // 좌표로부터 세부 지역명 가져오기 (Reverse Geocoding)
 async function getLocationNameFromCoords(lat, lon) {
     try {
@@ -4267,9 +4434,15 @@ async function getLocationNameFromCoords(lat, lon) {
                     const location = locationData[0];
                     console.log('🏘️ Reverse Geocoding 결과:', location);
                     
-                    // 한국어 지역명 우선, 없으면 영어명 사용
-                    const cityName = location.local_names?.ko || location.name;
-                    const stateName = location.state;
+                    // 한국어 지역명 우선, 없으면 영어명을 한글로 매핑
+                    let cityName = location.local_names?.ko || location.name;
+                    let stateName = location.state;
+                    
+                    // 영어 지역명을 한글로 매핑
+                    cityName = translateLocationToKorean(cityName);
+                    if (stateName) {
+                        stateName = translateLocationToKorean(stateName);
+                    }
                     
                     // "화성시, 경기도" 형태로 반환
                     const fullLocationName = stateName ? `${cityName}, ${stateName}` : cityName;
