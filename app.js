@@ -3804,7 +3804,7 @@ function initWeatherFeature() {
 
 // Hugging Face API 설정 (무료 Inference API)
 // 가장 안정적이고 빠른 모델 사용
-const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
+const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/distilgpt2';
 
 // API 키 설정 방법 (GitHub 업로드 시 키가 무효화되는 문제 해결)
 // 방법 1: 키를 분할해서 저장 (GitHub 감지 우회)
@@ -3986,7 +3986,7 @@ async function analyzeExerciseData(profileName) {
         });
         
         // 가족 평균 계산
-        const allProfiles = ['아빠', '엄마', '주환', '태환'];
+    const allProfiles = ['아빠', '엄마', '주환', '태환'];
         const familyData = {};
         let familyTotalThisWeek = 0;
         
@@ -4021,16 +4021,16 @@ async function analyzeExerciseData(profileName) {
         const hasExerciseHistory = totalExercises > 0;
         
         const result = {
-            profileName,
-            thisWeek: thisWeekExercises,
-            lastWeek: lastWeekExercises,
-            thisMonth: thisMonthExercises,
+        profileName,
+        thisWeek: thisWeekExercises,
+        lastWeek: lastWeekExercises,
+        thisMonth: thisMonthExercises,
             recentSevenDays: recentSevenDaysExercises,
             totalExercises: totalExercises,
             exerciseTypes: Array.from(exerciseTypes),
-            familyAverage: Math.round(familyAverage * 10) / 10,
+        familyAverage: Math.round(familyAverage * 10) / 10,
             familyData: familyData,
-            trend: thisWeekExercises - lastWeekExercises,
+        trend: thisWeekExercises - lastWeekExercises,
             isAboveAverage: thisWeekExercises > familyAverage,
             daysSinceLastExercise: daysSinceLastExercise,
             lastExerciseDate: lastExerciseDate,
@@ -4092,7 +4092,7 @@ function generateMotivationPrompt(data, weatherData) {
         trendContext = `지난주(${lastWeek}회)보다 이번주(${thisWeek}회) 운동이 줄었습니다.`;
     } else if (thisWeek > 0) {
         trendContext = `지난주와 이번주 모두 ${thisWeek}회 운동으로 일정하게 유지하고 있습니다.`;
-                } else {
+    } else {
         trendContext = `이번주와 지난주 모두 운동을 하지 않았습니다.`;
     }
     
@@ -4121,7 +4121,7 @@ function generateMotivationPrompt(data, weatherData) {
         exercisePatternContext = `${daysSinceLastExercise}일 전에 운동했고, 규칙적으로 하고 있습니다.`;
     } else if (daysSinceLastExercise <= 7) {
         exercisePatternContext = `${daysSinceLastExercise}일 전에 마지막 운동을 했습니다.`;
-    } else {
+        } else {
         exercisePatternContext = `${daysSinceLastExercise}일째 운동을 쉬고 있습니다.`;
     }
     
@@ -4231,44 +4231,24 @@ async function callHuggingFaceAPI(prompt, debugElement = null) {
     showDebugLog(`🔑 API 키 형식: ${HUGGINGFACE_API_KEY.startsWith('hf_') ? '✅ 올바름' : '❌ 잘못됨'}`);
     showDebugLog(`🤖 AI 모델: ${HUGGINGFACE_API_URL.split('/').pop()}`);
     
-    // 모델 상태 확인
-    try {
-        showDebugLog(`🔍 모델 상태 확인 중...`);
-        const statusResponse = await fetch(HUGGINGFACE_API_URL, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`
-            }
-        });
-        
-        if (statusResponse.ok) {
-            showDebugLog(`✅ 모델 접근 가능 (${statusResponse.status})`);
-        } else {
-            showDebugLog(`⚠️ 모델 상태: ${statusResponse.status} ${statusResponse.statusText}`, true);
-        }
-    } catch (statusError) {
-        showDebugLog(`⚠️ 모델 상태 확인 실패: ${statusError.message}`, true);
-    }
+    // 모델 상태 확인 제거 (404 오류 방지)
+    showDebugLog(`🚀 모델 상태 확인 생략, 바로 API 호출 시작`);
     
     // 매우 간단한 프롬프트로 테스트
     const testPrompt = "운동 격려 메시지: 화이팅!";
     showDebugLog(`📝 테스트 프롬프트: ${testPrompt}`);
     
     try {
-        // 가장 간단한 요청 파라미터
+        // 가장 간단한 요청 파라미터 (최소한의 설정)
         const requestBody = {
             inputs: testPrompt,
             parameters: {
-                max_new_tokens: 20,
-                temperature: 0.7
-            },
-            options: {
-                wait_for_model: true,
-                use_cache: true
+                max_length: 50,
+                do_sample: false
             }
         };
         
-        showDebugLog(`🔧 요청 파라미터: max_new_tokens=20, temperature=0.7`);
+        showDebugLog(`🔧 요청 파라미터: max_length=50, do_sample=false`);
         
         showDebugLog(`📤 API 요청 전송 중...`);
         
@@ -4326,7 +4306,7 @@ async function callHuggingFaceAPI(prompt, debugElement = null) {
             } else if (result[0].text) {
                 generatedText = result[0].text;
                 showDebugLog(`✅ 텍스트 추출: 배열[0].text`);
-            } else {
+    } else {
                 showDebugLog(`❌ 배열[0]에서 텍스트 필드 없음: ${Object.keys(result[0]).join(', ')}`, true);
             }
         } else if (result.generated_text) {
@@ -4335,7 +4315,7 @@ async function callHuggingFaceAPI(prompt, debugElement = null) {
         } else if (result.text) {
             generatedText = result.text;
             showDebugLog(`✅ 텍스트 추출: result.text`);
-        } else {
+    } else {
             showDebugLog(`❌ 텍스트 필드 없음: ${Object.keys(result).join(', ')}`, true);
         }
         
@@ -4835,7 +4815,7 @@ async function generateMotivationMessage() {
                 // 메시지 표시 (AI 활용 여부에 따라 다르게 표시)
                 updateMessageWithAIIndicator(messageElement, result.message, result.isRealAI);
                 console.log(`✅ ${currentProfile}님 AI 동기부여 메시지 생성 완료:`, result.message);
-            } else {
+        } else {
                 // 운동 이력이 없는 경우 - AI 시작 격려 메시지
                 console.log(`📝 ${currentProfile}님 운동 시작 격려 메시지 생성`);
                 
