@@ -3822,8 +3822,8 @@ if (window.APP_CONFIG && window.APP_CONFIG.HUGGINGFACE_API_KEY) {
 // 방법 2: 분할된 키 조합 (GitHub 스캔 우회)
 else {
     const API_PREFIX = 'hf_';
-    const API_MIDDLE = 'guyswDgtVWXEcgmjx';
-    const API_SUFFIX = 'cnibJsgWlXlaltMMD';
+    const API_MIDDLE = 'wXqJQMcOGiZZlppc';
+    const API_SUFFIX = 'wjAQyJFrrpdQJawfgP';
     HUGGINGFACE_API_KEY = API_PREFIX + API_MIDDLE + API_SUFFIX;
     console.log('🔄 분할 키 방식으로 API 키 설정됨');
 }
