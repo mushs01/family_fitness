@@ -3805,7 +3805,7 @@ function initWeatherFeature() {
 // Hugging Face API 설정 (무료 Inference API)
 // 한국어 텍스트 생성에 적합한 모델 사용
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
-const HUGGINGFACE_API_KEY = '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'; // 실제 API 키
+const HUGGINGFACE_API_KEY = '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'; // 실제 API 키
 
 // API 키 유효성 검사 함수
 function isValidAPIKey(key) {
