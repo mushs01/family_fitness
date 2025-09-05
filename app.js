@@ -3811,7 +3811,7 @@ const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/gpt2';
 // 2. 사용자용: 앱에서 설정 메뉴를 통해 입력
 
 // Hugging Face API 키 - GitHub 업로드시 "I'll fix it later" 선택하면 됨
-const HUGGINGFACE_API_KEY = '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';
+const HUGGINGFACE_API_KEY = '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';
 
 // API 키 유효성 검사 함수
 function isValidAPIKey(key) {
