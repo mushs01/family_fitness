@@ -1,0 +1,34 @@
+# API 키 및 민감한 정보
+webapp/config.js
+config.js
+secrets.js
+*.env
+.env*
+
+# API 키가 포함된 파일들
+*api_key*
+*secret*
+
+# 로그 파일
+*.log
+logs/
+
+# 임시 파일
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js (필요시)
+node_modules/
+npm-debug.log*
+
+# 빌드 결과물
+dist/
+build/
