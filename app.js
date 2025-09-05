@@ -1755,37 +1755,55 @@ async function updateProfileCards() {
     console.log('✅ 프로필 카드 업데이트 완료');
 }
 
-// 프로필 점수 계산 - 개선된 버전 (전체 운동 이력 기반)
+// 프로필 점수 계산 - 월별 기준 (매달 1일 초기화)
 function calculateProfileScore(profileName, profileData) {
     if (!profileData) {
         console.log(`❌ ${profileName}: 프로필 데이터 없음`);
         return 0;
     }
     
+    const currentMonth = getCurrentMonthKey(); // 예: "2025-01"
+    const currentMonthStart = new Date(currentMonth + '-01'); // 이번달 1일
+    const now = new Date();
+    
+    console.log(`📅 ${profileName} 점수 계산 기준: ${currentMonth} (${currentMonthStart.toLocaleDateString()} ~ 현재)`);
+    
     let completionScore = 0;
     let planScore = 0;
     
-    // 모든 운동 계획에서 완료된 운동들의 점수 계산
+    // 이번 달에 생성된 운동 계획들만 계산
     if (profileData.exercisePlans && Array.isArray(profileData.exercisePlans)) {
         console.log(`📊 ${profileName}: 총 ${profileData.exercisePlans.length}개 운동 계획 확인`);
         
-        profileData.exercisePlans.forEach(plan => {
-            // 완료된 운동 횟수만큼 점수 획득
+        const thisMonthPlans = profileData.exercisePlans.filter(plan => {
+            const planCreatedDate = new Date(plan.created_date);
+            return planCreatedDate >= currentMonthStart && planCreatedDate <= now;
+        });
+        
+        console.log(`📅 이번 달 생성된 계획: ${thisMonthPlans.length}개`);
+        
+        thisMonthPlans.forEach(plan => {
+            // 이번 달에 완료된 운동 횟수만 계산
             if (plan.completed_dates && Array.isArray(plan.completed_dates)) {
-                const completedCount = plan.completed_dates.length;
+                const thisMonthCompletions = plan.completed_dates.filter(dateStr => {
+                    const completedDate = new Date(dateStr);
+                    return completedDate >= currentMonthStart && completedDate <= now;
+                });
+                
+                const completedCount = thisMonthCompletions.length;
                 const exerciseScore = getExerciseScore(plan.exercise_type);
                 const planCompletionScore = completedCount * exerciseScore;
                 
                 completionScore += planCompletionScore;
                 
-                console.log(`  📝 ${plan.exercise_type}: ${completedCount}회 완료 × ${exerciseScore}점 = ${planCompletionScore}점`);
+                console.log(`  📝 ${plan.exercise_type}: 이번달 ${completedCount}회 완료 × ${exerciseScore}점 = ${planCompletionScore}점`);
             }
             
-            // 계획 보너스 점수 (계획 1개당 1점)
+            // 계획 보너스 점수 (이번달 계획 1개당 1점)
             planScore += 1;
         });
         
-        console.log(`📊 ${profileName} 점수 계산 상세:`);
+        console.log(`📊 ${profileName} 이번달(${currentMonth}) 점수 계산:`);
         console.log(`  - 완료 점수: ${completionScore}점`);
         console.log(`  - 계획 보너스: ${planScore}점`);
         console.log(`  - 총합: ${completionScore + planScore}점`);
@@ -1794,7 +1812,7 @@ function calculateProfileScore(profileName, profileData) {
     }
     
     const totalScore = completionScore + planScore;
-    console.log(`🏆 ${profileName} 최종 점수: ${totalScore}점`);
+    console.log(`🏆 ${profileName} 이번달 최종 점수: ${totalScore}점`);
     
     return totalScore;
 }
@@ -3269,44 +3287,67 @@ const weatherDescriptions = {
     'extreme rain': '극심한 비'
 };
 
-// 현재 위치 가져오기
+// 현재 위치 가져오기 - 개선된 버전
 function getCurrentLocation() {
     return new Promise((resolve, reject) => {
+        // 브라우저 지원 확인
         if (!navigator.geolocation) {
+            console.warn('❌ 이 브라우저는 GPS를 지원하지 않습니다.');
             reject(new Error('GPS를 지원하지 않는 브라우저입니다.'));
             return;
         }
 
+        // HTTPS 확인 (Chrome 50+ 요구사항)
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            console.warn('⚠️ HTTPS가 아닌 환경에서는 위치 정보 접근이 제한될 수 있습니다.');
+        }
+
+        console.log('📍 GPS 위치 정보 요청 중...');
+
         const options = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000 // 5분간 캐시된 위치 사용
+            enableHighAccuracy: false, // 배터리 절약을 위해 false로 변경
+            timeout: 15000, // 타임아웃을 15초로 증가
+            maximumAge: 600000 // 10분간 캐시된 위치 사용 (5분에서 증가)
         };
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                console.log(`✅ GPS 위치 획득 성공: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+                console.log(`📊 정확도: ${position.coords.accuracy}m`);
+                
                 resolve({
                     latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
                 });
             },
             (error) => {
                 let errorMessage = '';
+                let troubleshootTip = '';
+                
                 switch(error.code) {
                     case error.PERMISSION_DENIED:
                         errorMessage = '위치 정보 접근이 거부되었습니다.';
+                        troubleshootTip = '브라우저 주소창 옆 자물쇠 아이콘 → 위치 → 허용으로 변경하세요.';
                         break;
                     case error.POSITION_UNAVAILABLE:
                         errorMessage = '위치 정보를 사용할 수 없습니다.';
+                        troubleshootTip = 'GPS가 꺼져있거나 실내에 계신 경우 발생할 수 있습니다.';
                         break;
                     case error.TIMEOUT:
                         errorMessage = '위치 정보 요청 시간이 초과되었습니다.';
+                        troubleshootTip = '네트워크 연결을 확인하거나 잠시 후 다시 시도해보세요.';
                         break;
                     default:
                         errorMessage = '위치 정보를 가져오는 중 오류가 발생했습니다.';
+                        troubleshootTip = '브라우저를 새로고침하거나 다른 브라우저를 사용해보세요.';
                         break;
                 }
-                reject(new Error(errorMessage));
+                
+                console.warn(`❌ GPS 오류 (코드: ${error.code}): ${errorMessage}`);
+                console.warn(`💡 해결 방법: ${troubleshootTip}`);
+                
+                reject(new Error(`${errorMessage} (${troubleshootTip})`));
             },
             options
         );
@@ -3526,10 +3567,23 @@ async function updateWeatherInfo() {
             }
         } catch (locationError) {
             console.warn('위치 정보 가져오기 실패:', locationError.message);
+            
+            // 위치 접근 실패 원인에 따른 다른 메시지 표시
+            let locationDisplayName = '';
+            if (locationError.message.includes('거부')) {
+                locationDisplayName = `📍 위치권한 거부됨 (설정에서 허용 가능)`;
+            } else if (locationError.message.includes('시간이 초과')) {
+                locationDisplayName = `📍 위치 확인중... (시간 초과)`;
+            } else if (locationError.message.includes('HTTPS')) {
+                locationDisplayName = `📍 HTTPS 필요 (보안 연결 필요)`;
+            } else {
+                locationDisplayName = `📍 위치 확인 불가 (일반 날씨 표시)`;
+            }
+            
             // 위치 접근 실패 시 기본 위치로 모의 데이터 사용
-            weatherData = await getMockWeatherData('현재 위치');
+            weatherData = await getMockWeatherData('현재 지역');
             forecastData = await getMockHourlyForecast();
-            locationName = `📍 현재 위치 (위치접근불가)`;
+            locationName = locationDisplayName;
         }
         
         // 현재 날씨 UI 업데이트
