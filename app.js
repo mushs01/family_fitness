@@ -21,15 +21,24 @@
     let isFirebaseAvailable = false;
     const FAMILY_CODE = "OUR_FAMILY_2024";
 
-    // Firebase 초기화 시도
-    try {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        isFirebaseAvailable = true;
-        console.log("🔥 Firebase 연결 성공!");
-    } catch (error) {
-        console.warn("⚠️ Firebase 연결 실패, 로컬 모드로 동작:", error);
-        isFirebaseAvailable = false;
+    // Firebase 초기화 함수
+    async function initializeFirebase() {
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            
+            // 익명 인증 설정 (동기화 개선을 위해)
+            await firebase.auth().signInAnonymously();
+            console.log("🔐 Firebase 익명 인증 성공");
+            
+            isFirebaseAvailable = true;
+            console.log("🔥 Firebase 연결 성공!");
+            return true;
+        } catch (error) {
+            console.warn("⚠️ Firebase 연결 실패, 로컬 모드로 동작:", error);
+            isFirebaseAvailable = false;
+            return false;
+        }
     }
 
     // 로컬 스토리지 키
@@ -249,6 +258,10 @@
                 console.log('✅ 로딩 텍스트 업데이트됨');
             }
             
+            // Firebase 초기화
+            await initializeFirebase();
+            console.log('✅ Firebase 초기화 완료');
+            
             // 데이터 로드
             console.log('📊 데이터 로드 시작...');
             await loadData();
@@ -278,6 +291,38 @@
             console.log('🔥 Firebase 동기화 설정...');
             setupFirebaseSync();
             console.log('✅ Firebase 동기화 설정 완료');
+            
+            // 포그라운드 복귀 시 동기화 강화
+            setupVisibilitySync();
+            console.log('✅ 가시성 동기화 설정 완료');
+            
+            // 앱 시작 시 추가 동기화 체크 (실시간 리스너 설정 후 한 번 더 확인)
+            if (isFirebaseAvailable) {
+                setTimeout(async () => {
+                    console.log('🔄 앱 시작 후 추가 동기화 체크...');
+                    try {
+                        const firebaseData = await loadDataFromFirebase();
+                        if (firebaseData) {
+                            const localDataStr = localStorage.getItem(STORAGE_KEY);
+                            const localData = localDataStr ? JSON.parse(localDataStr) : null;
+                            
+                            if (localData) {
+                                const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
+                                const localTimestamp = localData.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
+                                
+                                // 5초 이상 차이나면 병합 (실시간 리스너보다 관대한 조건)
+                                const timeDiff = Math.abs(firebaseTimestamp.getTime() - localTimestamp.getTime());
+                                if (timeDiff > 5000) {
+                                    console.log('🔄 시작 시 동기화 필요 - 데이터 병합');
+                                    await processFirebaseUpdate(firebaseData);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ 시작 시 동기화 체크 실패:', error);
+                    }
+                }, 3000); // 3초 후 체크
+            }
             
             // 로딩 완료 - 텍스트 숨기기
             if (loadingText) {
@@ -408,7 +453,9 @@
         }
     }
 
-    // Firebase 실시간 동기화 설정 - 개선된 버전
+    // Firebase 실시간 동기화 설정 - 개선된 버전 (충돌 해결)
+    let syncSessionId = null; // 세션 ID 전역 변수
+    
     function setupFirebaseSync() {
         if (!isFirebaseAvailable) {
             console.log("📱 로컬 모드로 동작");
@@ -417,65 +464,38 @@
         
         console.log('🔥 Firebase 실시간 리스너 설정 중...');
         
+        // 고유 세션 ID 생성 (기기별 구분을 위해)
+        syncSessionId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        console.log('📱 세션 ID:', syncSessionId);
+        
         // Firestore 실시간 리스너 설정
         db.collection('families').doc(FAMILY_CODE)
             .onSnapshot(async (doc) => {
                 try {
-                    // 문서가 존재하고, 대기 중인 쓰기가 없고, 현재 업데이트 중이 아닐 때만 처리
-                if (doc.exists && doc.metadata.hasPendingWrites === false && !isUpdatingFromFirebase) {
-                    console.log("🔄 Firebase에서 실시간 데이터 수신");
-                    const firebaseData = doc.data();
+                    // 문서가 존재하고, 대기 중인 쓰기가 없을 때만 처리
+                    if (doc.exists && doc.metadata.hasPendingWrites === false) {
+                        console.log("🔄 Firebase에서 실시간 데이터 수신");
+                        const firebaseData = doc.data();
                         
-                        // 현재 로컬 데이터와 비교
-                        const localDataStr = localStorage.getItem(STORAGE_KEY);
-                        const localData = localDataStr ? JSON.parse(localDataStr) : null;
-                        
-                        // 타임스탬프 비교로 불필요한 업데이트 방지
-                        const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
-                        const localTimestamp = localData?.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
-                        
-                        console.log('Firebase 타임스탬프:', firebaseTimestamp);
-                        console.log('로컬 타임스탬프:', localTimestamp);
-                        
-                        // Firebase 데이터가 더 최신이거나 같을 때만 병합
-                        if (firebaseTimestamp >= localTimestamp) {
-                            console.log('🔄 데이터 병합 시작 (Firebase 데이터가 더 최신)');
-                    
-                    // 로컬 데이터와 Firebase 데이터 병합
-                    const mergedData = await mergeDataSafely(firebaseData);
-                    
-                    // 로컬 저장소 업데이트
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
-                    
-                    // UI 업데이트 (Firebase 업데이트 중임을 표시)
-                    isUpdatingFromFirebase = true;
-                    
-                    // 현재 프로필이 있으면 UI 업데이트
-                    if (currentProfile) {
-                        await updatePlansList();
-                        await updateRanking();
-                                await updateCurrentProfileInfo();
-                    } else {
-                        // 프로필 선택 화면에 있을 때도 업데이트
-                        await updateRanking();
-                        await updateProfileCards();
-                    }
-                    
-                            // 플래그 해제
-                            setTimeout(() => {
-                    isUpdatingFromFirebase = false;
-                            }, 1500);
-                            
-                            showMessage("🔄 가족 데이터 동기화 완료", true);
-                        } else {
-                            console.log('⏭️ 로컬 데이터가 더 최신이므로 병합 생략');
+                        // 자신이 업데이트한 데이터인지 확인 (무한 루프 방지)
+                        const updatedBy = firebaseData.updatedBy || '';
+                        if (updatedBy.includes(syncSessionId)) {
+                            console.log('⏭️ 자신이 업데이트한 데이터 - 무시');
+                            return;
                         }
+                        
+                        // 현재 업데이트 중인지 확인
+                        if (isUpdatingFromFirebase) {
+                            console.log('🔄 현재 업데이트 중 - 잠시 대기');
+                            return;
+                        }
+                        
+                        await processFirebaseUpdate(firebaseData);
+                        
                     } else if (!doc.exists) {
                         console.log('📄 Firebase 문서가 존재하지 않음');
                     } else if (doc.metadata.hasPendingWrites) {
-                        console.log('⏳ 대기 중인 쓰기 작업이 있음 - 무시');
-                    } else if (isUpdatingFromFirebase) {
-                        console.log('🔄 현재 업데이트 중 - 무시');
+                        console.log('⏳ 대기 중인 쓰기 작업이 있음 - 잠시 대기');
                     }
                 } catch (error) {
                     console.error('❌ 실시간 동기화 처리 중 오류:', error);
@@ -485,12 +505,153 @@
                 console.warn("⚠️ Firebase 실시간 동기화 오류:", error);
                 isUpdatingFromFirebase = false;
                 
-                // 연결 재시도 로직
+                // 연결 재시도 로직 (더 안정적으로)
                 setTimeout(() => {
-                    console.log('🔄 Firebase 연결 재시도...');
-                    setupFirebaseSync();
-                }, 10000);
+                    if (isFirebaseAvailable) {
+                        console.log('🔄 Firebase 연결 재시도...');
+                        setupFirebaseSync();
+                    }
+                }, 15000); // 15초로 증가
             });
+    }
+    
+    // Firebase 업데이트 처리 함수 (분리하여 재사용성 향상)
+    async function processFirebaseUpdate(firebaseData) {
+        try {
+            isUpdatingFromFirebase = true;
+            
+            // 현재 로컬 데이터와 비교
+            const localDataStr = localStorage.getItem(STORAGE_KEY);
+            const localData = localDataStr ? JSON.parse(localDataStr) : null;
+            
+            // 타임스탬프 비교로 불필요한 업데이트 방지
+            const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
+            const localTimestamp = localData?.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
+            
+            console.log('Firebase 타임스탬프:', firebaseTimestamp);
+            console.log('로컬 타임스탬프:', localTimestamp);
+            
+            // Firebase 데이터가 더 최신일 때만 병합 (2초 차이 허용)
+            const timeDiff = firebaseTimestamp.getTime() - localTimestamp.getTime();
+            if (timeDiff > 2000) { // 2초 이상 차이날 때만
+                console.log('🔄 데이터 병합 시작 (Firebase 데이터가 더 최신)');
+                
+                // 로컬 데이터와 Firebase 데이터 병합
+                const mergedData = await mergeDataSafely(firebaseData);
+                
+                // 병합된 데이터에 세션 정보 추가 (자신의 업데이트 식별용)
+                mergedData.lastSyncSession = syncSessionId;
+                
+                // 로컬 저장소 업데이트
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
+                
+                // UI 업데이트
+                if (currentProfile) {
+                    await updatePlansList();
+                    await updateRanking();
+                    await updateCurrentProfileInfo();
+                } else {
+                    // 프로필 선택 화면에 있을 때도 업데이트
+                    await updateRanking();
+                    await updateProfileCards();
+                }
+                
+                showMessage("🔄 가족 데이터 동기화 완료", true);
+                console.log('✅ Firebase 동기화 완료');
+                
+            } else {
+                console.log('⏭️ 로컬 데이터가 최신이거나 시간 차이가 적음 - 병합 생략');
+            }
+            
+        } catch (error) {
+            console.error('❌ Firebase 업데이트 처리 중 오류:', error);
+        } finally {
+            // 플래그 해제 (더 안정적인 타이밍)
+            setTimeout(() => {
+                isUpdatingFromFirebase = false;
+                console.log('🏁 업데이트 플래그 해제');
+            }, 2000);
+        }
+    }
+    
+    // 포그라운드 복귀 시 동기화 설정
+    function setupVisibilitySync() {
+        let lastVisibilityChange = Date.now();
+        
+        document.addEventListener('visibilitychange', async () => {
+            // 포그라운드로 돌아왔을 때만 처리
+            if (!document.hidden) {
+                const now = Date.now();
+                const timeSinceLastChange = now - lastVisibilityChange;
+                
+                // 5초 이상 백그라운드에 있었다면 강제 동기화
+                if (timeSinceLastChange > 5000 && isFirebaseAvailable) {
+                    console.log('👁️ 포그라운드 복귀 - 데이터 동기화 확인');
+                    
+                    try {
+                        // Firebase에서 최신 데이터 강제 로드
+                        const firebaseData = await loadDataFromFirebase();
+                        if (firebaseData) {
+                            await processFirebaseUpdate(firebaseData);
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ 포그라운드 동기화 실패:', error);
+                    }
+                }
+                
+                lastVisibilityChange = now;
+            }
+        });
+        
+        // 온라인/오프라인 상태 변화 감지
+        window.addEventListener('online', async () => {
+            console.log('🌐 온라인 상태 복귀 - Firebase 재연결');
+            if (isFirebaseAvailable) {
+                // 온라인 복귀 시 즉시 동기화
+                setTimeout(async () => {
+                    try {
+                        const firebaseData = await loadDataFromFirebase();
+                        if (firebaseData) {
+                            await processFirebaseUpdate(firebaseData);
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ 온라인 복귀 동기화 실패:', error);
+                    }
+                }, 1000);
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('📱 오프라인 상태 - 로컬 모드로 전환');
+        });
+        
+        // 주기적 동기화 체크 (5분마다)
+        setInterval(async () => {
+            if (isFirebaseAvailable && !isUpdatingFromFirebase) {
+                console.log('⏰ 주기적 동기화 체크...');
+                try {
+                    const firebaseData = await loadDataFromFirebase();
+                    if (firebaseData) {
+                        const localDataStr = localStorage.getItem(STORAGE_KEY);
+                        const localData = localDataStr ? JSON.parse(localDataStr) : null;
+                        
+                        if (localData) {
+                            const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
+                            const localTimestamp = localData.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
+                            
+                            // 30초 이상 차이나면 동기화 (주기적 체크는 더 관대하게)
+                            const timeDiff = Math.abs(firebaseTimestamp.getTime() - localTimestamp.getTime());
+                            if (timeDiff > 30000) {
+                                console.log('⏰ 주기적 동기화 필요 - 데이터 병합');
+                                await processFirebaseUpdate(firebaseData);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ 주기적 동기화 체크 실패:', error);
+                }
+            }
+        }, 5 * 60 * 1000); // 5분마다
     }
 
     // 이벤트 리스너 설정
@@ -2655,16 +2816,16 @@
         if (!isFirebaseAvailable) return false;
         
         try {
-            // 타임스탬프 추가로 동시 업데이트 감지
+            // 타임스탬프와 세션 ID 추가로 동시 업데이트 감지 및 무한 루프 방지
             const dataWithTimestamp = {
                 ...data,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedBy: navigator.userAgent.substring(0, 50) // 간단한 클라이언트 식별자
+                updatedBy: `${syncSessionId || 'unknown'}_${navigator.userAgent.substring(0, 30)}` // 세션 ID 포함
             };
             
             // 전체 문서 교체 (merge: false)로 데이터 일관성 보장
             await db.collection('families').doc(FAMILY_CODE).set(dataWithTimestamp);
-            console.log("🔥 Firebase에 데이터 저장 성공");
+            console.log("🔥 Firebase에 데이터 저장 성공 (세션:", syncSessionId, ")");
             return true;
         } catch (error) {
             console.warn("⚠️ Firebase 데이터 저장 실패:", error);
@@ -2672,7 +2833,7 @@
         }
     }
 
-    // 데이터 로드 (Firebase 우선, 로컬 백업) - 개선된 버전
+    // 데이터 로드 (Firebase 우선, 로컬 백업) - 비동기 동기화 개선 버전
     async function loadData() {
         console.log('📊 데이터 로드 시작...');
         
@@ -2683,35 +2844,60 @@
             localStorage.removeItem('force_firebase_sync');
         }
         
-        // Firebase에서 먼저 시도
+        // 로컬 데이터 먼저 로드 (빠른 UI 표시를 위해)
+        let localData = null;
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            localData = JSON.parse(saved);
+            console.log('📱 로컬 데이터 로드 완료');
+        }
+        
+        // Firebase에서 최신 데이터 확인 및 병합
         if (isFirebaseAvailable) {
-            console.log('🔥 Firebase에서 데이터 로드 시도...');
-            const firebaseData = await loadDataFromFirebase();
-            if (firebaseData) {
-                console.log('✅ Firebase 데이터 로드 성공');
-                
-                // 로컬 데이터와 병합 (강제 동기화가 아닌 경우)
-                if (forceSyncFlag !== 'true') {
-                    const localDataStr = localStorage.getItem(STORAGE_KEY);
-                    if (localDataStr) {
-                        console.log('🔄 Firebase와 로컬 데이터 병합 중...');
+            console.log('🔥 Firebase에서 최신 데이터 확인...');
+            try {
+                const firebaseData = await loadDataFromFirebase();
+                if (firebaseData) {
+                    console.log('✅ Firebase 데이터 로드 성공');
+                    
+                    // 로컬 데이터가 있으면 항상 병합 (시간 차이 상관없이)
+                    if (localData) {
+                        console.log('🔄 Firebase와 로컬 데이터 강제 병합 중...');
+                        
+                        // 타임스탬프 비교
+                        const firebaseTimestamp = firebaseData.lastUpdated?.toDate?.() || new Date(0);
+                        const localTimestamp = localData.lastUpdated ? new Date(localData.lastUpdated) : new Date(0);
+                        
+                        console.log('🕐 Firebase 타임스탬프:', firebaseTimestamp);
+                        console.log('🕐 로컬 타임스탬프:', localTimestamp);
+                        
+                        // Firebase 데이터가 더 최신이거나 로컬 데이터가 더 최신인 경우 모두 병합
                         const mergedData = await mergeDataSafely(firebaseData);
+                        
+                        // 병합된 데이터를 로컬에 저장
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
+                        console.log('✅ 병합 완료 및 로컬 저장');
+                        
                         return mergedData;
+                    } else {
+                        // 로컬 데이터가 없으면 Firebase 데이터 사용
+                        console.log('📥 Firebase 데이터를 로컬에 저장');
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(firebaseData));
+                        return firebaseData;
                     }
+                } else {
+                    console.log('⚠️ Firebase 데이터 로드 실패');
                 }
-                
-                return firebaseData;
-            } else {
-                console.log('⚠️ Firebase 데이터 로드 실패');
+            } catch (error) {
+                console.warn('⚠️ Firebase 로드 중 오류:', error);
             }
         } else {
             console.log('📱 Firebase 연결 불가 - 로컬 모드');
         }
         
-        // Firebase 실패시 로컬에서 로드
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            return JSON.parse(saved);
+        // Firebase 실패시 로컬 데이터 반환
+        if (localData) {
+            return localData;
         }
         
         // 아빠의 미리 등록된 운동 계획
